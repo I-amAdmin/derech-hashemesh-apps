@@ -1,30 +1,11 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Layout } from "@/components/layout";
 import { useParams, Link } from "wouter";
 import { useGetQuote, getGetQuoteQueryKey } from "@workspace/api-client-react";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowRight, Printer, Phone, Download, MessageCircle, Loader2 } from "lucide-react";
-
-declare module "html2pdf.js" {
-  interface Html2PdfOptions {
-    margin?: number | number[];
-    filename?: string;
-    image?: { type?: string; quality?: number };
-    html2canvas?: { scale?: number; useCORS?: boolean; logging?: boolean };
-    jsPDF?: { unit?: string; format?: string; orientation?: string };
-    pagebreak?: { mode?: string | string[] };
-  }
-  interface Html2Pdf {
-    set(opt: Html2PdfOptions): Html2Pdf;
-    from(element: HTMLElement): Html2Pdf;
-    save(): Promise<void>;
-    output(type: string): Promise<Blob>;
-  }
-  function html2pdf(): Html2Pdf;
-  export = html2pdf;
-}
+import { ArrowRight, Printer, Phone, Download, MessageCircle } from "lucide-react";
 
 const ORDER_PHONE = "054-8070533";
 
@@ -32,7 +13,6 @@ export default function QuoteDetail() {
   const params = useParams();
   const quoteId = parseInt(params.id || "0", 10);
   const printRef = useRef<HTMLDivElement>(null);
-  const [isPdfLoading, setIsPdfLoading] = useState(false);
 
   const { data: quote, isLoading } = useGetQuote(quoteId, {
     query: { enabled: !!quoteId, queryKey: getGetQuoteQueryKey(quoteId) },
@@ -40,66 +20,12 @@ export default function QuoteDetail() {
 
   const handlePrint = () => window.print();
 
-  const handleDownloadPdf = async () => {
-    if (!printRef.current || !quote) return;
-    setIsPdfLoading(true);
-    try {
-      const html2pdf = (await import("html2pdf.js")).default;
-
-      // html2canvas cannot parse oklch (used by Tailwind v4).
-      // We resolve computed colors (browser converts oklch → rgb) and apply
-      // them as inline styles on the cloned document before html2canvas runs.
-      const resolveOklch = (clonedDoc: Document) => {
-        const originalEls = Array.from(printRef.current!.querySelectorAll("*"));
-        const clonedEls = Array.from(clonedDoc.querySelectorAll("[data-pdf-root] *"));
-
-        originalEls.forEach((orig, i) => {
-          const cloned = clonedEls[i] as HTMLElement | undefined;
-          if (!cloned) return;
-          const cs = window.getComputedStyle(orig);
-          cloned.style.color = cs.color;
-          cloned.style.backgroundColor = cs.backgroundColor;
-          cloned.style.borderTopColor = cs.borderTopColor;
-          cloned.style.borderRightColor = cs.borderRightColor;
-          cloned.style.borderBottomColor = cs.borderBottomColor;
-          cloned.style.borderLeftColor = cs.borderLeftColor;
-          cloned.style.outlineColor = cs.outlineColor;
-          cloned.style.fill = cs.fill;
-          cloned.style.stroke = cs.stroke;
-        });
-
-        // Also resolve the root element itself
-        const origRoot = printRef.current!;
-        const clonedRoot = clonedDoc.querySelector("[data-pdf-root]") as HTMLElement | null;
-        if (clonedRoot) {
-          const cs = window.getComputedStyle(origRoot);
-          clonedRoot.style.color = cs.color;
-          clonedRoot.style.backgroundColor = cs.backgroundColor;
-        }
-      };
-
-      // Temporarily mark our element so onclone can find it
-      printRef.current.setAttribute("data-pdf-root", "true");
-
-      await html2pdf()
-        .set({
-          margin: [10, 10, 10, 10],
-          filename: `הצעת-מחיר-${quote.id}-${quote.customerName}.pdf`,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            onclone: (_clonedDoc: Document) => resolveOklch(_clonedDoc),
-          },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        })
-        .from(printRef.current)
-        .save();
-    } finally {
-      printRef.current?.removeAttribute("data-pdf-root");
-      setIsPdfLoading(false);
-    }
+  const handleDownloadPdf = () => {
+    if (!quote) return;
+    const prev = document.title;
+    document.title = `הצעת-מחיר-${quote.id}-${quote.customerName}`;
+    window.print();
+    setTimeout(() => { document.title = prev; }, 2000);
   };
 
   const handleWhatsApp = () => {
@@ -124,7 +50,6 @@ export default function QuoteDetail() {
     }
     lines.push("");
     lines.push(`טלפון להזמנות: ${ORDER_PHONE}`);
-
     const text = encodeURIComponent(lines.join("\n"));
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
@@ -170,15 +95,10 @@ export default function QuoteDetail() {
           <Button
             variant="outline"
             onClick={handleDownloadPdf}
-            disabled={isPdfLoading}
             className="gap-2"
             data-testid="button-download-pdf"
           >
-            {isPdfLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Download className="w-4 h-4" />
-            )}
+            <Download className="w-4 h-4" />
             הורד PDF
           </Button>
 
@@ -241,7 +161,7 @@ export default function QuoteDetail() {
               >
                 {[
                   "ברקוד",
-                  'תיאור פריט',
+                  "תיאור פריט",
                   'סה"כ משקל (ק"ג)',
                   'מחיר לק"ג',
                   "כמות להזמנה",
