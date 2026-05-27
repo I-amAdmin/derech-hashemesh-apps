@@ -45,18 +45,59 @@ export default function QuoteDetail() {
     setIsPdfLoading(true);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
+
+      // html2canvas cannot parse oklch (used by Tailwind v4).
+      // We resolve computed colors (browser converts oklch → rgb) and apply
+      // them as inline styles on the cloned document before html2canvas runs.
+      const resolveOklch = (clonedDoc: Document) => {
+        const originalEls = Array.from(printRef.current!.querySelectorAll("*"));
+        const clonedEls = Array.from(clonedDoc.querySelectorAll("[data-pdf-root] *"));
+
+        originalEls.forEach((orig, i) => {
+          const cloned = clonedEls[i] as HTMLElement | undefined;
+          if (!cloned) return;
+          const cs = window.getComputedStyle(orig);
+          cloned.style.color = cs.color;
+          cloned.style.backgroundColor = cs.backgroundColor;
+          cloned.style.borderTopColor = cs.borderTopColor;
+          cloned.style.borderRightColor = cs.borderRightColor;
+          cloned.style.borderBottomColor = cs.borderBottomColor;
+          cloned.style.borderLeftColor = cs.borderLeftColor;
+          cloned.style.outlineColor = cs.outlineColor;
+          cloned.style.fill = cs.fill;
+          cloned.style.stroke = cs.stroke;
+        });
+
+        // Also resolve the root element itself
+        const origRoot = printRef.current!;
+        const clonedRoot = clonedDoc.querySelector("[data-pdf-root]") as HTMLElement | null;
+        if (clonedRoot) {
+          const cs = window.getComputedStyle(origRoot);
+          clonedRoot.style.color = cs.color;
+          clonedRoot.style.backgroundColor = cs.backgroundColor;
+        }
+      };
+
+      // Temporarily mark our element so onclone can find it
+      printRef.current.setAttribute("data-pdf-root", "true");
+
       await html2pdf()
         .set({
           margin: [10, 10, 10, 10],
           filename: `הצעת-מחיר-${quote.id}-${quote.customerName}.pdf`,
           image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            onclone: (_clonedDoc: Document) => resolveOklch(_clonedDoc),
+          },
           jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-          pagebreak: { mode: ["avoid-all", "css"] },
         })
         .from(printRef.current)
         .save();
     } finally {
+      printRef.current?.removeAttribute("data-pdf-root");
       setIsPdfLoading(false);
     }
   };
