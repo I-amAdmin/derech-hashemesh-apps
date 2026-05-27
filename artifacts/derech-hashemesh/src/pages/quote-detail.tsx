@@ -94,7 +94,43 @@ export default function QuoteDetail() {
     lines.push(`*סה"כ לתשלום: ${formatCurrency(quote.totalAmount)}*`);
     if (quote.notes) { lines.push(""); lines.push(`הערות: ${quote.notes}`); }
     lines.push(""); lines.push(`טלפון להזמנות: ${ORDER_PHONE}`);
-    window.open(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
+
+    let phone = "";
+    if (quote.customerPhone) {
+      const digits = quote.customerPhone.replace(/\D/g, "");
+      if (digits.startsWith("0")) {
+        phone = "972" + digits.slice(1);
+      } else {
+        phone = digits;
+      }
+    }
+
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
+  };
+
+  const handleEmail = () => {
+    if (!quote) return;
+    const subject = `הצעת מחיר #${quote.id} — דרך השמש`;
+    const bodyLines: string[] = [];
+    bodyLines.push(`שלום ${quote.contactName || quote.customerName},`);
+    bodyLines.push("");
+    bodyLines.push(`מצ"ב הצעת מחיר מס' ${quote.id} מתאריך ${formatDate(quote.date)}.`);
+    bodyLines.push("");
+    bodyLines.push("פירוט הפריטים:");
+    quote.items.forEach((item) => {
+      bodyLines.push(`  • ${item.description} | כמות: ${item.quantity} | סה"כ: ${formatCurrency(item.totalPrice)}`);
+    });
+    bodyLines.push("");
+    bodyLines.push(`סה"כ לתשלום: ${formatCurrency(quote.totalAmount)}`);
+    if (quote.notes) { bodyLines.push(""); bodyLines.push(`הערות: ${quote.notes}`); }
+    bodyLines.push("");
+    bodyLines.push("לפרטים ולהזמנות:");
+    bodyLines.push(`טלפון: ${ORDER_PHONE}`);
+    bodyLines.push("");
+    bodyLines.push("תודה שבחרת בדרך השמש!");
+
+    const mailto = `mailto:${quote.email ?? ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join("\n"))}`;
+    window.open(mailto, "_blank");
   };
 
   const handleExcelExport = () => {
@@ -228,6 +264,10 @@ export default function QuoteDetail() {
           <Button variant="outline" size="sm" onClick={handleWhatsApp} className="gap-2" data-testid="button-whatsapp">
             <MessageCircle className="w-4 h-4" />
             וואטסאפ
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleEmail} className="gap-2" data-testid="button-email" disabled={!quote?.email}>
+            <Mail className="w-4 h-4" />
+            מייל
           </Button>
           <Button variant="outline" size="sm" onClick={handleDownloadPdf} className="gap-2" data-testid="button-download-pdf">
             <Download className="w-4 h-4" />
