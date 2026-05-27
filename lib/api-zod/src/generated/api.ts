@@ -202,6 +202,7 @@ export const ListQuotesResponseItem = zod.object({
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
   "itemCount": zod.number(),
+  "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
@@ -212,6 +213,8 @@ export const ListQuotesResponse = zod.array(ListQuotesResponseItem)
  * @summary Create a new quote
  */
 
+
+export const createQuoteBodyItemsItemCustomPricePerKgMin = 0;
 
 
 
@@ -224,7 +227,8 @@ export const CreateQuoteBody = zod.object({
   "notes": zod.string().optional(),
   "items": zod.array(zod.object({
   "productId": zod.number(),
-  "quantity": zod.number().min(1)
+  "quantity": zod.number().min(1),
+  "customPricePerKg": zod.number().min(createQuoteBodyItemsItemCustomPricePerKgMin).optional().describe('Override the catalog price per kg for this item')
 }))
 })
 
@@ -244,6 +248,7 @@ export const GetQuotesSummaryResponse = zod.object({
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
   "itemCount": zod.number(),
+  "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 }))
@@ -265,6 +270,58 @@ export const GetQuoteResponse = zod.object({
   "email": zod.string().nullish(),
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
+  "status": zod.enum(['pending', 'approved', 'cancelled']),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "productId": zod.number(),
+  "barcode": zod.string(),
+  "description": zod.string(),
+  "weightKg": zod.number(),
+  "pricePerKg": zod.number(),
+  "quantity": zod.number(),
+  "totalPrice": zod.number()
+}))
+})
+
+
+/**
+ * @summary Update an existing quote
+ */
+export const UpdateQuoteParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+export const updateQuoteBodyItemsItemCustomPricePerKgMin = 0;
+
+
+
+export const UpdateQuoteBody = zod.object({
+  "customerName": zod.string().min(1),
+  "contactName": zod.string().optional(),
+  "customerPhone": zod.string().optional(),
+  "email": zod.string().optional(),
+  "date": zod.coerce.date(),
+  "notes": zod.string().optional(),
+  "items": zod.array(zod.object({
+  "productId": zod.number(),
+  "quantity": zod.number().min(1),
+  "customPricePerKg": zod.number().min(updateQuoteBodyItemsItemCustomPricePerKgMin).optional().describe('Override the catalog price per kg for this item')
+}))
+})
+
+export const UpdateQuoteResponse = zod.object({
+  "id": zod.number(),
+  "customerName": zod.string(),
+  "contactName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "totalAmount": zod.number(),
+  "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
@@ -285,6 +342,32 @@ export const GetQuoteResponse = zod.object({
  */
 export const DeleteQuoteParams = zod.object({
   "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Update a quote's status
+ */
+export const UpdateQuoteStatusParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateQuoteStatusBody = zod.object({
+  "status": zod.enum(['pending', 'approved', 'cancelled'])
+})
+
+export const UpdateQuoteStatusResponse = zod.object({
+  "id": zod.number(),
+  "customerName": zod.string(),
+  "contactName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "totalAmount": zod.number(),
+  "itemCount": zod.number(),
+  "status": zod.enum(['pending', 'approved', 'cancelled']),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
 })
 
 

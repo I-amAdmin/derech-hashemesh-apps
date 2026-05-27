@@ -10,4 +10,9 @@ export interface QuoteItemInput {
   productId: number;
   /** @minimum 1 */
   quantity: number;
+  /**
+     * Override the catalog price per kg for this item
+     * @minimum 0
+     */
+  customPricePerKg?: number;
 }

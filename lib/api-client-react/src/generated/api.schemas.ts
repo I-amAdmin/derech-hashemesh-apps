@@ -91,7 +91,21 @@ export interface QuoteItemInput {
   productId: number;
   /** @minimum 1 */
   quantity: number;
+  /**
+     * Override the catalog price per kg for this item
+     * @minimum 0
+     */
+  customPricePerKg?: number;
 }
+
+export type QuoteStatus = typeof QuoteStatus[keyof typeof QuoteStatus];
+
+
+export const QuoteStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  cancelled: 'cancelled',
+} as const;
 
 export interface Quote {
   id: number;
@@ -105,10 +119,20 @@ export interface Quote {
   date: string;
   totalAmount: number;
   itemCount: number;
+  status: QuoteStatus;
   /** @nullable */
   notes?: string | null;
   createdAt: string;
 }
+
+export type QuoteDetailStatus = typeof QuoteDetailStatus[keyof typeof QuoteDetailStatus];
+
+
+export const QuoteDetailStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  cancelled: 'cancelled',
+} as const;
 
 export interface QuoteDetail {
   id: number;
@@ -121,6 +145,7 @@ export interface QuoteDetail {
   email?: string | null;
   date: string;
   totalAmount: number;
+  status: QuoteDetailStatus;
   /** @nullable */
   notes?: string | null;
   createdAt: string;
@@ -136,6 +161,19 @@ export interface QuoteInput {
   date: string;
   notes?: string;
   items: QuoteItemInput[];
+}
+
+export type QuoteStatusUpdateStatus = typeof QuoteStatusUpdateStatus[keyof typeof QuoteStatusUpdateStatus];
+
+
+export const QuoteStatusUpdateStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  cancelled: 'cancelled',
+} as const;
+
+export interface QuoteStatusUpdate {
+  status: QuoteStatusUpdateStatus;
 }
 
 export interface QuotesSummary {

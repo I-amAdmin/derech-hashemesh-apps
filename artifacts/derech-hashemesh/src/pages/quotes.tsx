@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Layout } from "@/components/layout";
-import { useListQuotes, useDeleteQuote, getListQuotesQueryKey, getGetQuotesSummaryQueryKey } from "@workspace/api-client-react";
+import {
+  useListQuotes,
+  useDeleteQuote,
+  useUpdateQuoteStatus,
+  getListQuotesQueryKey,
+  getGetQuotesSummaryQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -18,8 +24,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Search, Eye, Trash2, FileText } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, Search, Eye, Trash2, FileText, ChevronDown, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "ממתינה",
+  approved: "אושרה",
+  cancelled: "בוטלה",
+};
+
+const STATUS_CLASSES: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  approved: "bg-green-100 text-green-800 border-green-200",
+  cancelled: "bg-red-100 text-red-800 border-red-200",
+};
 
 export default function Quotes() {
   const queryClient = useQueryClient();
@@ -29,6 +53,7 @@ export default function Quotes() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const deleteQuote = useDeleteQuote();
+  const updateStatus = useUpdateQuoteStatus();
 
   const filteredQuotes = quotes?.filter(
     (q) =>
@@ -54,6 +79,20 @@ export default function Quotes() {
         }
       );
     }
+  };
+
+  const handleStatusChange = (id: number, status: "pending" | "approved" | "cancelled") => {
+    updateStatus.mutate(
+      { id, data: { status } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetQuotesSummaryQueryKey() });
+          toast({ title: `סטטוס עודכן: ${STATUS_LABELS[status]}` });
+        },
+        onError: () => toast({ title: "שגיאה בעדכון סטטוס", variant: "destructive" }),
+      }
+    );
   };
 
   return (
@@ -99,12 +138,13 @@ export default function Quotes() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[80px] text-right">מזהה</TableHead>
+                <TableHead className="w-[70px] text-right">מזהה</TableHead>
                 <TableHead className="text-right">שם לקוח</TableHead>
                 <TableHead className="text-right">תאריך</TableHead>
                 <TableHead className="text-right">פריטים</TableHead>
                 <TableHead className="text-right">סה״כ</TableHead>
-                <TableHead className="w-[120px] text-left">פעולות</TableHead>
+                <TableHead className="text-right">סטטוס</TableHead>
+                <TableHead className="w-[130px] text-left">פעולות</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -118,14 +158,44 @@ export default function Quotes() {
                   <TableCell>{formatDate(quote.date)}</TableCell>
                   <TableCell>{quote.itemCount}</TableCell>
                   <TableCell className="font-bold text-primary">{formatCurrency(quote.totalAmount)}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border font-medium cursor-pointer hover:opacity-80 transition-opacity ${STATUS_CLASSES[quote.status] ?? STATUS_CLASSES.pending}`}
+                          data-testid={`badge-status-${quote.id}`}
+                        >
+                          {STATUS_LABELS[quote.status] ?? quote.status}
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        {(["pending", "approved", "cancelled"] as const).map((s) => (
+                          <DropdownMenuItem
+                            key={s}
+                            onSelect={() => handleStatusChange(quote.id, s)}
+                            className={quote.status === s ? "font-bold" : ""}
+                            data-testid={`menu-status-${quote.id}-${s}`}
+                          >
+                            {STATUS_LABELS[s]}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                   <TableCell className="text-left">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-1">
                       <Link href={`/quotes/${quote.id}`}>
-                        <Button variant="ghost" size="icon" title="צפה">
+                        <Button variant="ghost" size="icon" title="צפה" className="h-8 w-8">
                           <Eye className="w-4 h-4" />
                         </Button>
                       </Link>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeletingId(quote.id)} title="מחק">
+                      <Link href={`/quotes/${quote.id}/edit`}>
+                        <Button variant="ghost" size="icon" title="ערוך" className="h-8 w-8">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => setDeletingId(quote.id)} title="מחק">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>

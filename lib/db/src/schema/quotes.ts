@@ -12,6 +12,7 @@ export const quotesTable = pgTable("quotes", {
   date: date("date").notNull(),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull().default("0"),
   notes: text("notes"),
+  status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

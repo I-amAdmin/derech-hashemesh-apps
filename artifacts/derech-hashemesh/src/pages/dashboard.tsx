@@ -1,14 +1,29 @@
+import { useState } from "react";
 import { useGetQuotesSummary, useGetProductStats } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Layout } from "@/components/layout";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { Link } from "wouter";
-import { FileText, Package, TrendingUp, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { FileText, Package, TrendingUp, Plus, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "ממתינה",
+  approved: "אושרה",
+  cancelled: "בוטלה",
+};
+
+const STATUS_VARIANTS: Record<string, string> = {
+  pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  approved: "bg-green-100 text-green-800 border-green-200",
+  cancelled: "bg-red-100 text-red-800 border-red-200",
+};
 
 export default function Dashboard() {
   const { data: summary, isLoading: isLoadingSummary } = useGetQuotesSummary();
   const { data: stats, isLoading: isLoadingStats } = useGetProductStats();
+  const [search, setSearch] = useState("");
 
   if (isLoadingSummary || isLoadingStats) {
     return (
@@ -27,6 +42,10 @@ export default function Dashboard() {
       </Layout>
     );
   }
+
+  const filteredQuotes = (summary?.recentQuotes ?? []).filter((q) =>
+    q.customerName.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <Layout>
@@ -79,11 +98,23 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <h2 className="text-xl font-bold mb-4">הצעות מחיר אחרונות</h2>
-      
-      {summary?.recentQuotes && summary.recentQuotes.length > 0 ? (
+      <div className="flex items-center justify-between mb-4 gap-4">
+        <h2 className="text-xl font-bold">הצעות מחיר אחרונות</h2>
+        <div className="relative w-64">
+          <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="חיפוש לפי שם לקוח..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pr-10 h-9"
+            data-testid="input-dashboard-search"
+          />
+        </div>
+      </div>
+
+      {filteredQuotes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {summary.recentQuotes.map(quote => (
+          {filteredQuotes.map(quote => (
             <Link key={quote.id} href={`/quotes/${quote.id}`}>
               <Card className="hover:border-primary/50 cursor-pointer transition-colors group">
                 <CardHeader className="pb-2">
@@ -93,8 +124,13 @@ export default function Dashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex justify-between items-center mt-2">
-                    <div className="text-sm text-muted-foreground">{quote.itemCount} פריטים</div>
+                  <div className="flex justify-between items-center mt-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">{quote.itemCount} פריטים</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${STATUS_VARIANTS[quote.status] ?? STATUS_VARIANTS.pending}`}>
+                        {STATUS_LABELS[quote.status] ?? quote.status}
+                      </span>
+                    </div>
                     <div className="text-xl font-semibold text-primary">{formatCurrency(quote.totalAmount)}</div>
                   </div>
                 </CardContent>
@@ -102,6 +138,13 @@ export default function Dashboard() {
             </Link>
           ))}
         </div>
+      ) : search ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+            <Search className="w-12 h-12 mb-4 opacity-20" />
+            <p className="text-lg font-medium">לא נמצאו תוצאות עבור "{search}"</p>
+          </CardContent>
+        </Card>
       ) : (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">

@@ -276,6 +276,31 @@ paths:
                 $ref: "#/components/schemas/QuoteDetail"
         "404":
           description: Not found
+    put:
+      operationId: updateQuote
+      tags: [quotes]
+      summary: Update an existing quote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteInput"
+      responses:
+        "200":
+          description: Updated quote with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteDetail"
+        "404":
+          description: Not found
     delete:
       operationId: deleteQuote
       tags: [quotes]
@@ -289,6 +314,33 @@ paths:
       responses:
         "204":
           description: Deleted
+        "404":
+          description: Not found
+
+  /quotes/{id}/status:
+    patch:
+      operationId: updateQuoteStatus
+      tags: [quotes]
+      summary: Update a quote's status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteStatusUpdate"
+      responses:
+        "200":
+          description: Updated quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
         "404":
           description: Not found
 
@@ -441,10 +493,14 @@ components:
         quantity:
           type: integer
           minimum: 1
+        customPricePerKg:
+          type: number
+          minimum: 0
+          description: Override the catalog price per kg for this item
 
     Quote:
       type: object
-      required: [id, customerName, date, totalAmount, itemCount, createdAt]
+      required: [id, customerName, date, totalAmount, itemCount, status, createdAt]
       properties:
         id:
           type: integer
@@ -463,6 +519,9 @@ components:
           type: number
         itemCount:
           type: integer
+        status:
+          type: string
+          enum: [pending, approved, cancelled]
         notes:
           type: ["string", "null"]
         createdAt:
@@ -471,7 +530,7 @@ components:
 
     QuoteDetail:
       type: object
-      required: [id, customerName, date, totalAmount, items, createdAt]
+      required: [id, customerName, date, totalAmount, status, items, createdAt]
       properties:
         id:
           type: integer
@@ -488,6 +547,9 @@ components:
           format: date
         totalAmount:
           type: number
+        status:
+          type: string
+          enum: [pending, approved, cancelled]
         notes:
           type: ["string", "null"]
         createdAt:
@@ -520,6 +582,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/QuoteItemInput"
+
+    QuoteStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, approved, cancelled]
 
     QuotesSummary:
       type: object
