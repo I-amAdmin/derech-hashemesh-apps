@@ -228,7 +228,7 @@ components:
 
     Product:
       type: object
-      required: [id, barcode, description, weightKg, pricePerKg, createdAt]
+      required: [id, barcode, description, weightKg, pricePerKg, department, createdAt]
       properties:
         id:
           type: integer
@@ -242,6 +242,9 @@ components:
         pricePerKg:
           type: number
           description: Price per kilogram in ILS
+        department:
+          type: string
+          description: Department / category name
         notes:
           type: ["string", "null"]
         createdAt:
@@ -264,6 +267,8 @@ components:
         pricePerKg:
           type: number
           minimum: 0
+        department:
+          type: string
         notes:
           type: string
 
@@ -282,6 +287,8 @@ components:
         pricePerKg:
           type: number
           minimum: 0
+        department:
+          type: string
         notes:
           type: string
 

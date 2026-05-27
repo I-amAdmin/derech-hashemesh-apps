@@ -15,5 +15,6 @@ export interface ProductUpdate {
   weightKg?: number;
   /** @minimum 0 */
   pricePerKg?: number;
+  department?: string;
   notes?: string;
 }

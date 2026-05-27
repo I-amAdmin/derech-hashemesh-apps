@@ -8,6 +8,7 @@ export const productsTable = pgTable("products", {
   description: text("description").notNull(),
   weightKg: numeric("weight_kg", { precision: 10, scale: 3 }).notNull(),
   pricePerKg: numeric("price_per_kg", { precision: 10, scale: 2 }).notNull(),
+  department: text("department").notNull().default("כללי"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

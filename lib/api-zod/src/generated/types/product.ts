@@ -14,6 +14,8 @@ export interface Product {
   weightKg: number;
   /** Price per kilogram in ILS */
   pricePerKg: number;
+  /** Department / category name */
+  department: string;
   /** @nullable */
   notes?: string | null;
   createdAt: Date;
