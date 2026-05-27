@@ -76,51 +76,51 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Warm, sun-inspired wholesale aesthetic */
-  --background: 40 33% 98%;
-  --foreground: 20 14% 15%;
+  /* דרך השמש — olive/earth brand palette from logo */
+  --background: 42 28% 97%;
+  --foreground: 28 20% 16%;
 
-  --border: 30 15% 85%;
+  --border: 38 18% 84%;
   --card: 0 0% 100%;
-  --card-foreground: 20 14% 15%;
-  --card-border: 30 15% 85%;
+  --card-foreground: 28 20% 16%;
+  --card-border: 38 18% 84%;
 
-  --sidebar: 30 20% 96%;
-  --sidebar-foreground: 20 14% 20%;
-  --sidebar-border: 30 15% 88%;
-  --sidebar-primary: 32 90% 55%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 30 25% 90%;
-  --sidebar-accent-foreground: 20 14% 15%;
-  --sidebar-ring: 32 90% 55%;
+  --sidebar: 38 22% 94%;
+  --sidebar-foreground: 28 20% 18%;
+  --sidebar-border: 38 18% 86%;
+  --sidebar-primary: 38 52% 38%;
+  --sidebar-primary-foreground: 42 30% 97%;
+  --sidebar-accent: 38 22% 88%;
+  --sidebar-accent-foreground: 28 20% 16%;
+  --sidebar-ring: 38 52% 38%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 20 14% 15%;
-  --popover-border: 30 15% 85%;
+  --popover-foreground: 28 20% 16%;
+  --popover-border: 38 18% 84%;
 
-  --primary: 32 90% 55%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 38 52% 38%;
+  --primary-foreground: 42 30% 97%;
 
-  --secondary: 24 15% 35%;
+  --secondary: 30 18% 32%;
   --secondary-foreground: 0 0% 100%;
 
-  --muted: 30 15% 92%;
-  --muted-foreground: 24 10% 45%;
+  --muted: 38 16% 91%;
+  --muted-foreground: 30 12% 44%;
 
-  --accent: 35 100% 94%;
-  --accent-foreground: 32 90% 40%;
+  --accent: 40 48% 92%;
+  --accent-foreground: 38 52% 30%;
 
-  --destructive: 0 75% 55%;
+  --destructive: 0 72% 52%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 30 15% 85%;
-  --ring: 32 90% 55%;
+  --input: 38 18% 84%;
+  --ring: 38 52% 38%;
 
-  --chart-1: 32 90% 55%;
-  --chart-2: 24 15% 35%;
-  --chart-3: 40 80% 45%;
-  --chart-4: 15 60% 50%;
-  --chart-5: 50 70% 40%;
+  --chart-1: 38 52% 38%;
+  --chart-2: 30 18% 32%;
+  --chart-3: 45 60% 42%;
+  --chart-4: 18 55% 44%;
+  --chart-5: 55 45% 38%;
 
   --app-font-sans: 'Assistant', sans-serif;
   --app-font-serif: Georgia, serif;
