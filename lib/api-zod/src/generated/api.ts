@@ -204,6 +204,7 @@ export const ListQuotesResponseItem = zod.object({
   "itemCount": zod.number(),
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
+  "shareToken": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListQuotesResponse = zod.array(ListQuotesResponseItem)
@@ -250,6 +251,7 @@ export const GetQuotesSummaryResponse = zod.object({
   "itemCount": zod.number(),
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
+  "shareToken": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -272,6 +274,7 @@ export const GetQuoteResponse = zod.object({
   "totalAmount": zod.number(),
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
+  "shareToken": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.number(),
@@ -323,6 +326,7 @@ export const UpdateQuoteResponse = zod.object({
   "totalAmount": zod.number(),
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
+  "shareToken": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.number(),
@@ -367,7 +371,84 @@ export const UpdateQuoteStatusResponse = zod.object({
   "itemCount": zod.number(),
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
+  "shareToken": zod.string().nullish(),
   "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Generate or retrieve a shareable token for a quote
+ */
+export const GenerateQuoteShareTokenParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GenerateQuoteShareTokenResponse = zod.object({
+  "shareToken": zod.string()
+})
+
+
+/**
+ * @summary Get a quote by its public share token (no auth required)
+ */
+export const GetPublicQuoteParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const GetPublicQuoteResponse = zod.object({
+  "id": zod.number(),
+  "customerName": zod.string(),
+  "contactName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "totalAmount": zod.number(),
+  "status": zod.enum(['pending', 'approved', 'cancelled']),
+  "notes": zod.string().nullish(),
+  "shareToken": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "productId": zod.number(),
+  "barcode": zod.string(),
+  "description": zod.string(),
+  "weightKg": zod.number(),
+  "pricePerKg": zod.number(),
+  "quantity": zod.number(),
+  "totalPrice": zod.number()
+}))
+})
+
+
+/**
+ * @summary Approve a quote via its public share token
+ */
+export const ApprovePublicQuoteParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+export const ApprovePublicQuoteResponse = zod.object({
+  "id": zod.number(),
+  "customerName": zod.string(),
+  "contactName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "totalAmount": zod.number(),
+  "status": zod.enum(['pending', 'approved', 'cancelled']),
+  "notes": zod.string().nullish(),
+  "shareToken": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "productId": zod.number(),
+  "barcode": zod.string(),
+  "description": zod.string(),
+  "weightKg": zod.number(),
+  "pricePerKg": zod.number(),
+  "quantity": zod.number(),
+  "totalPrice": zod.number()
+}))
 })
 
 

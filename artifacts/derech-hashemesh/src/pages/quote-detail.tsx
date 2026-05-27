@@ -1,12 +1,13 @@
 import { Layout } from "@/components/layout";
 import { useParams, Link } from "wouter";
-import { useGetQuote, useUpdateQuoteStatus, getGetQuoteQueryKey, getListQuotesQueryKey, getGetQuotesSummaryQueryKey } from "@workspace/api-client-react";
+import { useGetQuote, useUpdateQuoteStatus, useGenerateQuoteShareToken, getGetQuoteQueryKey, getListQuotesQueryKey, getGetQuotesSummaryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import * as XLSX from "xlsx";
 
 const ORDER_PHONE = "054-8070533";
@@ -34,11 +35,36 @@ export default function QuoteDetail() {
   const quoteId = parseInt(params.id || "0", 10);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const { data: quote, isLoading } = useGetQuote(quoteId, {
     query: { enabled: !!quoteId, queryKey: getGetQuoteQueryKey(quoteId) },
   });
   const updateStatus = useUpdateQuoteStatus();
+  const generateShareToken = useGenerateQuoteShareToken();
+
+  const handleShare = () => {
+    generateShareToken.mutate(
+      { id: quoteId },
+      {
+        onSuccess: (data) => {
+          const url = `${window.location.origin}${import.meta.env.BASE_URL}q/${data.shareToken}`;
+          setShareUrl(url);
+        },
+        onError: () => toast({ title: "שגיאה ביצירת קישור שיתוף", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleCopyLink = () => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      toast({ title: "הקישור הועתק ללוח" });
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const handlePrint = () => window.print();
 
@@ -175,6 +201,20 @@ export default function QuoteDetail() {
 
           <div className="w-px h-6 bg-border mx-1" />
 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShare}
+            disabled={generateShareToken.isPending}
+            className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50"
+            data-testid="button-share"
+          >
+            <Share2 className="w-4 h-4" />
+            שתף ללקוח
+          </Button>
+
+          <div className="w-px h-6 bg-border mx-1" />
+
           <Button variant="outline" size="sm" asChild>
             <Link href={`/quotes/${quoteId}/edit`}>
               <Pencil className="w-4 h-4 ml-2" />
@@ -199,6 +239,26 @@ export default function QuoteDetail() {
           </Button>
         </div>
       </div>
+
+      {/* Share link panel */}
+      {shareUrl && (
+        <div className="mb-6 print:hidden bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-blue-700 mb-1">קישור לשיתוף עם הלקוח</p>
+            <p className="text-sm font-mono text-blue-900 break-all">{shareUrl}</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCopyLink}
+            className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-100 shrink-0"
+            data-testid="button-copy-share-link"
+          >
+            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            {copied ? "הועתק!" : "העתק קישור"}
+          </Button>
+        </div>
+      )}
 
       {/* Printable area */}
       <div

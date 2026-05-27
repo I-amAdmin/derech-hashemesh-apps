@@ -22,6 +22,8 @@ export interface QuoteDetail {
   status: QuoteDetailStatus;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  shareToken?: string | null;
   createdAt: Date;
   items: QuoteItem[];
 }

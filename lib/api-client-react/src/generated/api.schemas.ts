@@ -122,6 +122,8 @@ export interface Quote {
   status: QuoteStatus;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  shareToken?: string | null;
   createdAt: string;
 }
 
@@ -148,8 +150,14 @@ export interface QuoteDetail {
   status: QuoteDetailStatus;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  shareToken?: string | null;
   createdAt: string;
   items: QuoteItem[];
+}
+
+export interface QuoteShareToken {
+  shareToken: string;
 }
 
 export interface QuoteInput {

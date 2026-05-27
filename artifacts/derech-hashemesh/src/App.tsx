@@ -11,12 +11,14 @@ import QuoteNew from "@/pages/quote-new";
 import QuoteDetail from "@/pages/quote-detail";
 import Customers from "@/pages/customers";
 import QuoteEdit from "@/pages/quote-edit";
+import QuotePublic from "@/pages/quote-public";
 
 const queryClient = new QueryClient();
 
 function Router() {
   return (
     <Switch>
+      <Route path="/q/:token" component={QuotePublic} />
       <Route path="/" component={Dashboard} />
       <Route path="/products" component={Products} />
       <Route path="/quotes" component={Quotes} />
