@@ -26,6 +26,7 @@ export const ListProductsResponseItem = zod.object({
   "description": zod.string(),
   "weightKg": zod.number().describe('Weight of content in kg'),
   "pricePerKg": zod.number().describe('Price per kilogram in ILS'),
+  "department": zod.string().describe('Department \/ category name'),
   "notes": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
@@ -48,6 +49,7 @@ export const CreateProductBody = zod.object({
   "description": zod.string().min(1),
   "weightKg": zod.number().min(createProductBodyWeightKgMin),
   "pricePerKg": zod.number().min(createProductBodyPricePerKgMin),
+  "department": zod.string().optional(),
   "notes": zod.string().optional()
 })
 
@@ -75,6 +77,7 @@ export const GetProductResponse = zod.object({
   "description": zod.string(),
   "weightKg": zod.number().describe('Weight of content in kg'),
   "pricePerKg": zod.number().describe('Price per kilogram in ILS'),
+  "department": zod.string().describe('Department \/ category name'),
   "notes": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
@@ -100,6 +103,7 @@ export const UpdateProductBody = zod.object({
   "description": zod.string().min(1).optional(),
   "weightKg": zod.number().min(updateProductBodyWeightKgMin).optional(),
   "pricePerKg": zod.number().min(updateProductBodyPricePerKgMin).optional(),
+  "department": zod.string().optional(),
   "notes": zod.string().optional()
 })
 
@@ -109,6 +113,7 @@ export const UpdateProductResponse = zod.object({
   "description": zod.string(),
   "weightKg": zod.number().describe('Weight of content in kg'),
   "pricePerKg": zod.number().describe('Price per kilogram in ILS'),
+  "department": zod.string().describe('Department \/ category name'),
   "notes": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })

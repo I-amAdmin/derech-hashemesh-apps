@@ -17,6 +17,8 @@ export interface Product {
   weightKg: number;
   /** Price per kilogram in ILS */
   pricePerKg: number;
+  /** Department / category name */
+  department: string;
   /** @nullable */
   notes?: string | null;
   createdAt: string;
@@ -31,6 +33,7 @@ export interface ProductInput {
   weightKg: number;
   /** @minimum 0 */
   pricePerKg: number;
+  department?: string;
   notes?: string;
 }
 
@@ -43,6 +46,7 @@ export interface ProductUpdate {
   weightKg?: number;
   /** @minimum 0 */
   pricePerKg?: number;
+  department?: string;
   notes?: string;
 }
 

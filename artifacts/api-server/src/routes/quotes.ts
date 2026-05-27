@@ -138,7 +138,7 @@ router.post("/quotes", async (req, res) => {
     .values({
       customerName,
       customerPhone: customerPhone ?? null,
-      date: String(quoteDate),
+      date: quoteDate instanceof Date ? quoteDate.toISOString().slice(0, 10) : String(quoteDate).slice(0, 10),
       notes: notes ?? null,
       totalAmount: String(totalAmount),
     })

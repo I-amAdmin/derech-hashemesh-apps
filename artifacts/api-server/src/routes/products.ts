@@ -13,7 +13,7 @@ import {
 const router = Router();
 
 router.get("/products", async (req, res) => {
-  const products = await db.select().from(productsTable).orderBy(productsTable.description);
+  const products = await db.select().from(productsTable).orderBy(productsTable.department, productsTable.description);
   res.json(
     products.map((p) => ({
       ...p,
@@ -64,6 +64,7 @@ router.post("/products", async (req, res) => {
     description: body.data.description,
     weightKg: String(body.data.weightKg),
     pricePerKg: String(body.data.pricePerKg),
+    department: body.data.department ?? "כללי",
     notes: body.data.notes ?? null,
   }).returning();
   res.status(201).json({ ...created, weightKg: Number(created.weightKg), pricePerKg: Number(created.pricePerKg) });
@@ -86,6 +87,7 @@ router.put("/products/:id", async (req, res) => {
   if (body.data.description !== undefined) updates.description = body.data.description;
   if (body.data.weightKg !== undefined) updates.weightKg = String(body.data.weightKg);
   if (body.data.pricePerKg !== undefined) updates.pricePerKg = String(body.data.pricePerKg);
+  if (body.data.department !== undefined) updates.department = body.data.department;
   if (body.data.notes !== undefined) updates.notes = body.data.notes;
 
   const [updated] = await db
