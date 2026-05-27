@@ -6,7 +6,9 @@ import { productsTable } from "./products";
 export const quotesTable = pgTable("quotes", {
   id: serial("id").primaryKey(),
   customerName: text("customer_name").notNull(),
+  contactName: text("contact_name"),
   customerPhone: text("customer_phone"),
+  email: text("email"),
   date: date("date").notNull(),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull().default("0"),
   notes: text("notes"),

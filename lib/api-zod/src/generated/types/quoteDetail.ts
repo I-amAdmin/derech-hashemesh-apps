@@ -11,7 +11,11 @@ export interface QuoteDetail {
   id: number;
   customerName: string;
   /** @nullable */
+  contactName?: string | null;
+  /** @nullable */
   customerPhone?: string | null;
+  /** @nullable */
+  email?: string | null;
   date: Date;
   totalAmount: number;
   /** @nullable */

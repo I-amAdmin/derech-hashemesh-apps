@@ -128,12 +128,77 @@ export const DeleteProductParams = zod.object({
 
 
 /**
+ * @summary List all customers
+ */
+export const ListCustomersResponseItem = zod.object({
+  "id": zod.number(),
+  "businessName": zod.string(),
+  "contactName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
+
+
+/**
+ * @summary Create a customer
+ */
+
+
+
+export const CreateCustomerBody = zod.object({
+  "businessName": zod.string().min(1),
+  "contactName": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "email": zod.string().optional()
+})
+
+
+/**
+ * @summary Update a customer
+ */
+export const UpdateCustomerParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateCustomerBody = zod.object({
+  "businessName": zod.string().min(1),
+  "contactName": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "email": zod.string().optional()
+})
+
+export const UpdateCustomerResponse = zod.object({
+  "id": zod.number(),
+  "businessName": zod.string(),
+  "contactName": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a customer
+ */
+export const DeleteCustomerParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary List all quotes
  */
 export const ListQuotesResponseItem = zod.object({
   "id": zod.number(),
   "customerName": zod.string(),
+  "contactName": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
+  "email": zod.string().nullish(),
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
   "itemCount": zod.number(),
@@ -152,7 +217,9 @@ export const ListQuotesResponse = zod.array(ListQuotesResponseItem)
 
 export const CreateQuoteBody = zod.object({
   "customerName": zod.string().min(1),
+  "contactName": zod.string().optional(),
   "customerPhone": zod.string().optional(),
+  "email": zod.string().optional(),
   "date": zod.coerce.date(),
   "notes": zod.string().optional(),
   "items": zod.array(zod.object({
@@ -171,7 +238,9 @@ export const GetQuotesSummaryResponse = zod.object({
   "recentQuotes": zod.array(zod.object({
   "id": zod.number(),
   "customerName": zod.string(),
+  "contactName": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
+  "email": zod.string().nullish(),
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
   "itemCount": zod.number(),
@@ -191,7 +260,9 @@ export const GetQuoteParams = zod.object({
 export const GetQuoteResponse = zod.object({
   "id": zod.number(),
   "customerName": zod.string(),
+  "contactName": zod.string().nullish(),
   "customerPhone": zod.string().nullish(),
+  "email": zod.string().nullish(),
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
   "notes": zod.string().nullish(),

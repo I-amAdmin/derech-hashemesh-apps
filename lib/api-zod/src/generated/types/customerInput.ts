@@ -5,15 +5,11 @@
  * API specification for דרך השמש wholesale quoting system
  * OpenAPI spec version: 0.1.0
  */
-import type { QuoteItemInput } from './quoteItemInput';
 
-export interface QuoteInput {
+export interface CustomerInput {
   /** @minLength 1 */
-  customerName: string;
+  businessName: string;
   contactName?: string;
-  customerPhone?: string;
+  phone?: string;
   email?: string;
-  date: Date;
-  notes?: string;
-  items: QuoteItemInput[];
 }

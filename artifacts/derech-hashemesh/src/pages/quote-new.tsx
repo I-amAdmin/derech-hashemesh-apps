@@ -1,6 +1,12 @@
 import { useState, useMemo } from "react";
 import { Layout } from "@/components/layout";
-import { useListProducts, useCreateQuote, getListQuotesQueryKey, getGetQuotesSummaryQueryKey } from "@workspace/api-client-react";
+import {
+  useListProducts,
+  useCreateQuote,
+  useListCustomers,
+  getListQuotesQueryKey,
+  getGetQuotesSummaryQueryKey,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { formatCurrency, formatNumber } from "@/lib/format";
@@ -13,7 +19,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Trash2, Plus, ArrowRight, Search, Check } from "lucide-react";
+import { Trash2, Plus, ArrowRight, Search, Check, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import {
@@ -22,6 +28,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const quoteItemSchema = z.object({
   productId: z.number(),
@@ -30,7 +42,9 @@ const quoteItemSchema = z.object({
 
 const quoteSchema = z.object({
   customerName: z.string().min(1, "שדה חובה"),
+  contactName: z.string().optional(),
   customerPhone: z.string().optional(),
+  email: z.string().email("כתובת מייל לא תקינה").optional().or(z.literal("")),
   date: z.string().min(1, "שדה חובה"),
   notes: z.string().optional(),
   items: z.array(quoteItemSchema).min(1, "יש להוסיף לפחות פריט אחד"),
@@ -43,6 +57,7 @@ export default function QuoteNew() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: products, isLoading: isLoadingProducts } = useListProducts();
+  const { data: customers } = useListCustomers();
   const createQuote = useCreateQuote();
 
   const [productSearch, setProductSearch] = useState("");
@@ -53,7 +68,9 @@ export default function QuoteNew() {
     resolver: zodResolver(quoteSchema),
     defaultValues: {
       customerName: "",
+      contactName: "",
       customerPhone: "",
+      email: "",
       date: format(new Date(), "yyyy-MM-dd"),
       notes: "",
       items: [],
@@ -66,6 +83,15 @@ export default function QuoteNew() {
   });
 
   const items = form.watch("items");
+
+  const fillFromCustomer = (customerId: number) => {
+    const c = customers?.find((c) => c.id === customerId);
+    if (!c) return;
+    form.setValue("customerName", c.businessName);
+    form.setValue("contactName", c.contactName ?? "");
+    form.setValue("customerPhone", c.phone ?? "");
+    form.setValue("email", c.email ?? "");
+  };
 
   const departments = useMemo(() => {
     const depts = [...new Set((products ?? []).map((p) => p.department || "כללי"))].sort((a, b) =>
@@ -84,7 +110,7 @@ export default function QuoteNew() {
     });
   }, [products, productSearch, selectedDept]);
 
-  const addProduct = (product: any) => {
+  const addProduct = (product: { id: number }) => {
     const exists = items.some((item) => item.productId === product.id);
     if (exists) {
       toast({ title: "המוצר כבר קיים בהצעת המחיר", variant: "destructive" });
@@ -106,7 +132,17 @@ export default function QuoteNew() {
 
   const onSubmit = (data: QuoteFormValues) => {
     createQuote.mutate(
-      { data },
+      {
+        data: {
+          customerName: data.customerName,
+          contactName: data.contactName || undefined,
+          customerPhone: data.customerPhone || undefined,
+          email: data.email || undefined,
+          date: data.date,
+          notes: data.notes || undefined,
+          items: data.items,
+        },
+      },
       {
         onSuccess: (newQuote) => {
           queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
@@ -114,7 +150,7 @@ export default function QuoteNew() {
           toast({ title: "הצעת המחיר נוצרה בהצלחה!" });
           setLocation(`/quotes/${newQuote.id}`);
         },
-        onError: () => toast({ title: "שגיאה ביצירת הצעת מחיר", variant: "destructive" })
+        onError: () => toast({ title: "שגיאה ביצירת הצעת מחיר", variant: "destructive" }),
       }
     );
   };
@@ -134,19 +170,58 @@ export default function QuoteNew() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
               <CardTitle>פרטי הלקוח</CardTitle>
+              {customers && customers.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" type="button" className="gap-2" data-testid="button-pick-customer">
+                      בחר מלקוח קיים
+                      <ChevronDown className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto min-w-[220px]">
+                    {customers.map((c) => (
+                      <DropdownMenuItem
+                        key={c.id}
+                        onSelect={() => fillFromCustomer(c.id)}
+                        data-testid={`menu-item-customer-${c.id}`}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium">{c.businessName}</span>
+                          {c.contactName && (
+                            <span className="text-xs text-muted-foreground">לידי: {c.contactName}</span>
+                          )}
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="customerName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>שם לקוח / חברה</FormLabel>
+                      <FormLabel>לכבוד — שם העסק *</FormLabel>
                       <FormControl>
-                        <Input {...field} data-testid="input-customer-name" />
+                        <Input {...field} placeholder="שם החברה / העסק" data-testid="input-customer-name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="contactName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>לידי — שם איש הקשר</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="שם מלא (אופציונלי)" data-testid="input-contact-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -157,9 +232,22 @@ export default function QuoteNew() {
                   name="customerPhone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>טלפון (אופציונלי)</FormLabel>
+                      <FormLabel>טלפון</FormLabel>
                       <FormControl>
-                        <Input {...field} dir="ltr" className="text-left" data-testid="input-customer-phone" />
+                        <Input {...field} dir="ltr" className="text-left" placeholder="05X-XXXXXXX" data-testid="input-customer-phone" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>אימייל (אופציונלי)</FormLabel>
+                      <FormControl>
+                        <Input {...field} dir="ltr" className="text-left" placeholder="name@example.com" data-testid="input-email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -326,10 +414,16 @@ export default function QuoteNew() {
         </form>
       </Form>
 
-      <Dialog open={isProductSelectorOpen} onOpenChange={(open) => {
-        setIsProductSelectorOpen(open);
-        if (!open) { setProductSearch(""); setSelectedDept(null); }
-      }}>
+      <Dialog
+        open={isProductSelectorOpen}
+        onOpenChange={(open) => {
+          setIsProductSelectorOpen(open);
+          if (!open) {
+            setProductSearch("");
+            setSelectedDept(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>בחר מוצר מהקטלוג</DialogTitle>
@@ -415,7 +509,10 @@ export default function QuoteNew() {
                               size="sm"
                               type="button"
                               disabled={alreadyAdded}
-                              onClick={(e) => { e.stopPropagation(); addProduct(p); }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addProduct(p);
+                              }}
                               data-testid={`button-select-product-${p.id}`}
                             >
                               {alreadyAdded ? "נוסף" : "בחר"}
