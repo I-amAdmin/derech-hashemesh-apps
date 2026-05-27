@@ -19,6 +19,7 @@ export * from './quoteDetailStatus';
 export * from './quoteInput';
 export * from './quoteItem';
 export * from './quoteItemInput';
+export * from './quoteShareToken';
 export * from './quotesSummary';
 export * from './quoteStatus';
 export * from './quoteStatusUpdate';

@@ -344,6 +344,71 @@ paths:
         "404":
           description: Not found
 
+  /quotes/{id}/share:
+    post:
+      operationId: generateQuoteShareToken
+      tags: [quotes]
+      summary: Generate or retrieve a shareable token for a quote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Share token generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteShareToken"
+        "404":
+          description: Not found
+
+  /quotes/public/{token}:
+    get:
+      operationId: getPublicQuote
+      tags: [quotes]
+      summary: Get a quote by its public share token (no auth required)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Quote detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteDetail"
+        "404":
+          description: Not found
+
+  /quotes/public/{token}/approve:
+    post:
+      operationId: approvePublicQuote
+      tags: [quotes]
+      summary: Approve a quote via its public share token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Approved quote detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteDetail"
+        "404":
+          description: Not found
+        "409":
+          description: Quote already cancelled
+
 components:
   schemas:
     HealthStatus:
@@ -524,6 +589,8 @@ components:
           enum: [pending, approved, cancelled]
         notes:
           type: ["string", "null"]
+        shareToken:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time
@@ -552,6 +619,8 @@ components:
           enum: [pending, approved, cancelled]
         notes:
           type: ["string", "null"]
+        shareToken:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time
@@ -559,6 +628,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/QuoteItem"
+
+    QuoteShareToken:
+      type: object
+      required: [shareToken]
+      properties:
+        shareToken:
+          type: string
 
     QuoteInput:
       type: object

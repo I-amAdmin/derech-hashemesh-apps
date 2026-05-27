@@ -1,12 +1,13 @@
 import { Layout } from "@/components/layout";
 import { useParams, Link } from "wouter";
-import { useGetQuote, useUpdateQuoteStatus, getGetQuoteQueryKey, getListQuotesQueryKey, getGetQuotesSummaryQueryKey } from "@workspace/api-client-react";
+import { useGetQuote, useUpdateQuoteStatus, useGenerateQuoteShareToken, getGetQuoteQueryKey, getListQuotesQueryKey, getGetQuotesSummaryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import * as XLSX from "xlsx";
 
 const ORDER_PHONE = "054-8070533";
@@ -34,11 +35,36 @@ export default function QuoteDetail() {
   const quoteId = parseInt(params.id || "0", 10);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const { data: quote, isLoading } = useGetQuote(quoteId, {
     query: { enabled: !!quoteId, queryKey: getGetQuoteQueryKey(quoteId) },
   });
   const updateStatus = useUpdateQuoteStatus();
+  const generateShareToken = useGenerateQuoteShareToken();
+
+  const handleShare = () => {
+    generateShareToken.mutate(
+      { id: quoteId },
+      {
+        onSuccess: (data) => {
+          const url = `${window.location.origin}${import.meta.env.BASE_URL}q/${data.shareToken}`;
+          setShareUrl(url);
+        },
+        onError: () => toast({ title: "שגיאה ביצירת קישור שיתוף", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleCopyLink = () => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setCopied(true);
+      toast({ title: "הקישור הועתק ללוח" });
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const handlePrint = () => window.print();
 
@@ -68,7 +94,43 @@ export default function QuoteDetail() {
     lines.push(`*סה"כ לתשלום: ${formatCurrency(quote.totalAmount)}*`);
     if (quote.notes) { lines.push(""); lines.push(`הערות: ${quote.notes}`); }
     lines.push(""); lines.push(`טלפון להזמנות: ${ORDER_PHONE}`);
-    window.open(`https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
+
+    let phone = "";
+    if (quote.customerPhone) {
+      const digits = quote.customerPhone.replace(/\D/g, "");
+      if (digits.startsWith("0")) {
+        phone = "972" + digits.slice(1);
+      } else {
+        phone = digits;
+      }
+    }
+
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(lines.join("\n"))}`, "_blank");
+  };
+
+  const handleEmail = () => {
+    if (!quote) return;
+    const subject = `הצעת מחיר #${quote.id} — דרך השמש`;
+    const bodyLines: string[] = [];
+    bodyLines.push(`שלום ${quote.contactName || quote.customerName},`);
+    bodyLines.push("");
+    bodyLines.push(`מצ"ב הצעת מחיר מס' ${quote.id} מתאריך ${formatDate(quote.date)}.`);
+    bodyLines.push("");
+    bodyLines.push("פירוט הפריטים:");
+    quote.items.forEach((item) => {
+      bodyLines.push(`  • ${item.description} | כמות: ${item.quantity} | סה"כ: ${formatCurrency(item.totalPrice)}`);
+    });
+    bodyLines.push("");
+    bodyLines.push(`סה"כ לתשלום: ${formatCurrency(quote.totalAmount)}`);
+    if (quote.notes) { bodyLines.push(""); bodyLines.push(`הערות: ${quote.notes}`); }
+    bodyLines.push("");
+    bodyLines.push("לפרטים ולהזמנות:");
+    bodyLines.push(`טלפון: ${ORDER_PHONE}`);
+    bodyLines.push("");
+    bodyLines.push("תודה שבחרת בדרך השמש!");
+
+    const mailto = `mailto:${quote.email ?? ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join("\n"))}`;
+    window.open(mailto, "_blank");
   };
 
   const handleExcelExport = () => {
@@ -175,6 +237,20 @@ export default function QuoteDetail() {
 
           <div className="w-px h-6 bg-border mx-1" />
 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShare}
+            disabled={generateShareToken.isPending}
+            className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50"
+            data-testid="button-share"
+          >
+            <Share2 className="w-4 h-4" />
+            שתף ללקוח
+          </Button>
+
+          <div className="w-px h-6 bg-border mx-1" />
+
           <Button variant="outline" size="sm" asChild>
             <Link href={`/quotes/${quoteId}/edit`}>
               <Pencil className="w-4 h-4 ml-2" />
@@ -189,6 +265,10 @@ export default function QuoteDetail() {
             <MessageCircle className="w-4 h-4" />
             וואטסאפ
           </Button>
+          <Button variant="outline" size="sm" onClick={handleEmail} className="gap-2" data-testid="button-email" disabled={!quote?.email}>
+            <Mail className="w-4 h-4" />
+            מייל
+          </Button>
           <Button variant="outline" size="sm" onClick={handleDownloadPdf} className="gap-2" data-testid="button-download-pdf">
             <Download className="w-4 h-4" />
             PDF
@@ -199,6 +279,26 @@ export default function QuoteDetail() {
           </Button>
         </div>
       </div>
+
+      {/* Share link panel */}
+      {shareUrl && (
+        <div className="mb-6 print:hidden bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-blue-700 mb-1">קישור לשיתוף עם הלקוח</p>
+            <p className="text-sm font-mono text-blue-900 break-all">{shareUrl}</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleCopyLink}
+            className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-100 shrink-0"
+            data-testid="button-copy-share-link"
+          >
+            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            {copied ? "הועתק!" : "העתק קישור"}
+          </Button>
+        </div>
+      )}
 
       {/* Printable area */}
       <div

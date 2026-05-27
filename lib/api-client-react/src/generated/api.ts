@@ -30,6 +30,7 @@ import type {
   Quote,
   QuoteDetail,
   QuoteInput,
+  QuoteShareToken,
   QuoteStatusUpdate,
   QuotesSummary
 } from './api.schemas';
@@ -1372,5 +1373,222 @@ export const useUpdateQuoteStatus = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getUpdateQuoteStatusMutationOptions(options));
+    }
+
+export const getGenerateQuoteShareTokenUrl = (id: number,) => {
+
+
+
+
+  return `/api/quotes/${id}/share`
+}
+
+/**
+ * @summary Generate or retrieve a shareable token for a quote
+ */
+export const generateQuoteShareToken = async (id: number, options?: RequestInit): Promise<QuoteShareToken> => {
+
+  return customFetch<QuoteShareToken>(getGenerateQuoteShareTokenUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getGenerateQuoteShareTokenMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateQuoteShareToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateQuoteShareToken>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['generateQuoteShareToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateQuoteShareToken>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  generateQuoteShareToken(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateQuoteShareTokenMutationResult = NonNullable<Awaited<ReturnType<typeof generateQuoteShareToken>>>
+
+    export type GenerateQuoteShareTokenMutationError = ErrorType<void>
+
+    /**
+ * @summary Generate or retrieve a shareable token for a quote
+ */
+export const useGenerateQuoteShareToken = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateQuoteShareToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateQuoteShareToken>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getGenerateQuoteShareTokenMutationOptions(options));
+    }
+
+export const getGetPublicQuoteUrl = (token: string,) => {
+
+
+
+
+  return `/api/quotes/public/${token}`
+}
+
+/**
+ * @summary Get a quote by its public share token (no auth required)
+ */
+export const getPublicQuote = async (token: string, options?: RequestInit): Promise<QuoteDetail> => {
+
+  return customFetch<QuoteDetail>(getGetPublicQuoteUrl(token),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicQuoteQueryKey = (token: string,) => {
+    return [
+    `/api/quotes/public/${token}`
+    ] as const;
+    }
+
+
+export const getGetPublicQuoteQueryOptions = <TData = Awaited<ReturnType<typeof getPublicQuote>>, TError = ErrorType<void>>(token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicQuote>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicQuoteQueryKey(token);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicQuote>>> = ({ signal }) => getPublicQuote(token, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(token), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicQuote>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPublicQuoteQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicQuote>>>
+export type GetPublicQuoteQueryError = ErrorType<void>
+
+
+/**
+ * @summary Get a quote by its public share token (no auth required)
+ */
+
+export function useGetPublicQuote<TData = Awaited<ReturnType<typeof getPublicQuote>>, TError = ErrorType<void>>(
+ token: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPublicQuote>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPublicQuoteQueryOptions(token,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getApprovePublicQuoteUrl = (token: string,) => {
+
+
+
+
+  return `/api/quotes/public/${token}/approve`
+}
+
+/**
+ * @summary Approve a quote via its public share token
+ */
+export const approvePublicQuote = async (token: string, options?: RequestInit): Promise<QuoteDetail> => {
+
+  return customFetch<QuoteDetail>(getApprovePublicQuoteUrl(token),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getApprovePublicQuoteMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvePublicQuote>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approvePublicQuote>>, TError,{token: string}, TContext> => {
+
+const mutationKey = ['approvePublicQuote'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approvePublicQuote>>, {token: string}> = (props) => {
+          const {token} = props ?? {};
+
+          return  approvePublicQuote(token,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApprovePublicQuoteMutationResult = NonNullable<Awaited<ReturnType<typeof approvePublicQuote>>>
+
+    export type ApprovePublicQuoteMutationError = ErrorType<void>
+
+    /**
+ * @summary Approve a quote via its public share token
+ */
+export const useApprovePublicQuote = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approvePublicQuote>>, TError,{token: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approvePublicQuote>>,
+        TError,
+        {token: string},
+        TContext
+      > => {
+      return useMutation(getApprovePublicQuoteMutationOptions(options));
     }
 

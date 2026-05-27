@@ -13,6 +13,7 @@ export const quotesTable = pgTable("quotes", {
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull().default("0"),
   notes: text("notes"),
   status: text("status").notNull().default("pending"),
+  shareToken: text("share_token").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
