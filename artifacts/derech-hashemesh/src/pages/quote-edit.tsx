@@ -1,14 +1,16 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Layout } from "@/components/layout";
 import {
   useListProducts,
-  useCreateQuote,
+  useUpdateQuote,
+  useGetQuote,
   useListCustomers,
   getListQuotesQueryKey,
   getGetQuotesSummaryQueryKey,
+  getGetQuoteQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +23,6 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Trash2, Plus, ArrowRight, Search, Check, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -43,17 +44,23 @@ const quoteSchema = z.object({
 
 type QuoteFormValues = z.infer<typeof quoteSchema>;
 
-export default function QuoteNew() {
+export default function QuoteEdit() {
+  const params = useParams();
+  const quoteId = parseInt(params.id || "0", 10);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { data: products, isLoading: isLoadingProducts } = useListProducts();
   const { data: customers } = useListCustomers();
-  const createQuote = useCreateQuote();
+  const { data: existingQuote, isLoading: isLoadingQuote } = useGetQuote(quoteId, {
+    query: { enabled: !!quoteId, queryKey: getGetQuoteQueryKey(quoteId) },
+  });
+  const updateQuote = useUpdateQuote();
 
   const [productSearch, setProductSearch] = useState("");
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
+  const [formReady, setFormReady] = useState(false);
 
   const form = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteSchema),
@@ -62,7 +69,7 @@ export default function QuoteNew() {
       contactName: "",
       customerPhone: "",
       email: "",
-      date: format(new Date(), "yyyy-MM-dd"),
+      date: "",
       notes: "",
       items: [],
     },
@@ -70,6 +77,24 @@ export default function QuoteNew() {
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
   const items = form.watch("items");
+
+  useEffect(() => {
+    if (!existingQuote || !products || formReady) return;
+    form.reset({
+      customerName: existingQuote.customerName,
+      contactName: existingQuote.contactName ?? "",
+      customerPhone: existingQuote.customerPhone ?? "",
+      email: existingQuote.email ?? "",
+      date: existingQuote.date,
+      notes: existingQuote.notes ?? "",
+      items: existingQuote.items.map((item) => ({
+        productId: item.productId ?? 0,
+        quantity: item.quantity,
+        customPricePerKg: item.pricePerKg,
+      })).filter((item) => item.productId > 0),
+    });
+    setFormReady(true);
+  }, [existingQuote, products, formReady, form]);
 
   const fillFromCustomer = (customerId: number) => {
     const c = customers?.find((c) => c.id === customerId);
@@ -117,12 +142,12 @@ export default function QuoteNew() {
     return price * product.weightKg * (item.quantity || 0);
   };
 
-  const calculateTotal = () =>
-    items.reduce((total, _, idx) => total + calculateItemTotal(idx), 0);
+  const calculateTotal = () => items.reduce((total, _, idx) => total + calculateItemTotal(idx), 0);
 
   const onSubmit = (data: QuoteFormValues) => {
-    createQuote.mutate(
+    updateQuote.mutate(
       {
+        id: quoteId,
         data: {
           customerName: data.customerName,
           contactName: data.contactName || undefined,
@@ -143,26 +168,43 @@ export default function QuoteNew() {
         },
       },
       {
-        onSuccess: (newQuote) => {
+        onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetQuotesSummaryQueryKey() });
-          toast({ title: "הצעת המחיר נוצרה בהצלחה!" });
-          setLocation(`/quotes/${newQuote.id}`);
+          queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
+          toast({ title: "הצעת המחיר עודכנה בהצלחה!" });
+          setLocation(`/quotes/${quoteId}`);
         },
-        onError: () => toast({ title: "שגיאה ביצירת הצעת מחיר", variant: "destructive" }),
+        onError: () => toast({ title: "שגיאה בעדכון הצעת מחיר", variant: "destructive" }),
       }
     );
   };
 
+  if (isLoadingQuote || !formReady) {
+    return (
+      <Layout>
+        <div className="p-12 text-center text-muted-foreground">טוען הצעת מחיר...</div>
+      </Layout>
+    );
+  }
+
+  if (!existingQuote) {
+    return (
+      <Layout>
+        <div className="p-12 text-center">הצעת המחיר לא נמצאה</div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="flex items-center mb-8 gap-4">
-        <Button variant="outline" size="icon" onClick={() => setLocation("/quotes")} data-testid="button-back">
+        <Button variant="outline" size="icon" onClick={() => setLocation(`/quotes/${quoteId}`)} data-testid="button-back">
           <ArrowRight className="w-4 h-4" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">הצעת מחיר חדשה</h1>
-          <p className="text-muted-foreground mt-1">מלא את פרטי הלקוח והוסף מוצרים</p>
+          <h1 className="text-3xl font-bold tracking-tight">עריכת הצעת מחיר #{quoteId}</h1>
+          <p className="text-muted-foreground mt-1">ערוך את פרטי הלקוח והמוצרים</p>
         </div>
       </div>
 
@@ -174,14 +216,14 @@ export default function QuoteNew() {
               {customers && customers.length > 0 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" type="button" className="gap-2" data-testid="button-pick-customer">
+                    <Button variant="outline" size="sm" type="button" className="gap-2">
                       בחר מלקוח קיים
                       <ChevronDown className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto min-w-[220px]">
                     {customers.map((c) => (
-                      <DropdownMenuItem key={c.id} onSelect={() => fillFromCustomer(c.id)} data-testid={`menu-item-customer-${c.id}`}>
+                      <DropdownMenuItem key={c.id} onSelect={() => fillFromCustomer(c.id)}>
                         <div className="flex flex-col gap-0.5">
                           <span className="font-medium">{c.businessName}</span>
                           {c.contactName && <span className="text-xs text-muted-foreground">לידי: {c.contactName}</span>}
@@ -195,39 +237,19 @@ export default function QuoteNew() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField control={form.control} name="customerName" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>לכבוד — שם העסק *</FormLabel>
-                    <FormControl><Input {...field} placeholder="שם החברה / העסק" data-testid="input-customer-name" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
+                  <FormItem><FormLabel>לכבוד — שם העסק *</FormLabel><FormControl><Input {...field} placeholder="שם החברה / העסק" /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="contactName" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>לידי — שם איש הקשר</FormLabel>
-                    <FormControl><Input {...field} placeholder="שם מלא (אופציונלי)" data-testid="input-contact-name" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
+                  <FormItem><FormLabel>לידי — שם איש הקשר</FormLabel><FormControl><Input {...field} placeholder="שם מלא (אופציונלי)" /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="customerPhone" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>טלפון</FormLabel>
-                    <FormControl><Input {...field} dir="ltr" className="text-left" placeholder="05X-XXXXXXX" data-testid="input-customer-phone" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
+                  <FormItem><FormLabel>טלפון</FormLabel><FormControl><Input {...field} dir="ltr" className="text-left" placeholder="05X-XXXXXXX" /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="email" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>אימייל (אופציונלי)</FormLabel>
-                    <FormControl><Input {...field} dir="ltr" className="text-left" placeholder="name@example.com" data-testid="input-email" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
+                  <FormItem><FormLabel>אימייל (אופציונלי)</FormLabel><FormControl><Input {...field} dir="ltr" className="text-left" placeholder="name@example.com" /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="date" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>תאריך</FormLabel>
-                    <FormControl><Input type="date" {...field} data-testid="input-date" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
+                  <FormItem><FormLabel>תאריך</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
             </CardContent>
@@ -275,49 +297,26 @@ export default function QuoteNew() {
                             <TableCell className="font-medium">{product.description}</TableCell>
                             <TableCell>{formatNumber(product.weightKg)} ק"ג</TableCell>
                             <TableCell>
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.customPricePerKg`}
-                                render={({ field: pField }) => (
-                                  <FormItem className="mb-0">
-                                    <FormControl>
-                                      <div className="relative">
-                                        <Input
-                                          type="number"
-                                          step="0.01"
-                                          min="0"
-                                          className={`h-8 text-center pr-1 ${isModified ? "border-orange-400 bg-orange-50 font-semibold" : ""}`}
-                                          {...pField}
-                                          data-testid={`input-price-${index}`}
-                                        />
-                                        {isModified && (
-                                          <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-400" title={`מחיר קטלוג: ${formatCurrency(catalogPrice)}`} />
-                                        )}
-                                      </div>
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
-                              {isModified && (
-                                <div className="text-xs text-orange-500 mt-0.5">קטלוג: {formatCurrency(catalogPrice)}</div>
-                              )}
+                              <FormField control={form.control} name={`items.${index}.customPricePerKg`} render={({ field: pField }) => (
+                                <FormItem className="mb-0">
+                                  <FormControl>
+                                    <div className="relative">
+                                      <Input type="number" step="0.01" min="0" className={`h-8 text-center pr-1 ${isModified ? "border-orange-400 bg-orange-50 font-semibold" : ""}`} {...pField} />
+                                      {isModified && <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-400" />}
+                                    </div>
+                                  </FormControl>
+                                </FormItem>
+                              )} />
+                              {isModified && <div className="text-xs text-orange-500 mt-0.5">קטלוג: {formatCurrency(catalogPrice)}</div>}
                             </TableCell>
                             <TableCell>
-                              <FormField
-                                control={form.control}
-                                name={`items.${index}.quantity`}
-                                render={({ field: qField }) => (
-                                  <FormItem className="mb-0">
-                                    <FormControl>
-                                      <Input type="number" min="1" className="h-8 text-center" {...qField} data-testid={`input-quantity-${index}`} />
-                                    </FormControl>
-                                  </FormItem>
-                                )}
-                              />
+                              <FormField control={form.control} name={`items.${index}.quantity`} render={({ field: qField }) => (
+                                <FormItem className="mb-0"><FormControl><Input type="number" min="1" className="h-8 text-center" {...qField} /></FormControl></FormItem>
+                              )} />
                             </TableCell>
                             <TableCell className="font-bold text-primary">{formatCurrency(itemTotal)}</TableCell>
                             <TableCell>
-                              <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" type="button" onClick={() => remove(index)} data-testid={`button-remove-item-${index}`}>
+                              <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" type="button" onClick={() => remove(index)}>
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </TableCell>
@@ -336,9 +335,7 @@ export default function QuoteNew() {
               <div className="flex justify-end mt-6">
                 <div className="bg-primary/10 p-4 rounded-lg flex items-center gap-6 min-w-[300px] justify-between">
                   <span className="text-lg font-medium">סה"כ לתשלום:</span>
-                  <span className="text-2xl font-bold text-primary" data-testid="text-total">
-                    {formatCurrency(calculateTotal())}
-                  </span>
+                  <span className="text-2xl font-bold text-primary">{formatCurrency(calculateTotal())}</span>
                 </div>
               </div>
             </CardContent>
@@ -347,19 +344,15 @@ export default function QuoteNew() {
           <Card>
             <CardContent className="pt-6">
               <FormField control={form.control} name="notes" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>הערות נוספות</FormLabel>
-                  <FormControl><Input {...field} data-testid="input-notes" /></FormControl>
-                  <FormMessage />
-                </FormItem>
+                <FormItem><FormLabel>הערות נוספות</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
               )} />
             </CardContent>
           </Card>
 
           <div className="flex justify-end gap-4">
-            <Button variant="outline" type="button" onClick={() => setLocation("/quotes")}>ביטול</Button>
-            <Button type="submit" size="lg" className="px-8 shadow-md" disabled={createQuote.isPending} data-testid="button-save-quote">
-              {createQuote.isPending ? "שומר..." : "שמור הצעת מחיר"}
+            <Button variant="outline" type="button" onClick={() => setLocation(`/quotes/${quoteId}`)}>ביטול</Button>
+            <Button type="submit" size="lg" className="px-8 shadow-md" disabled={updateQuote.isPending} data-testid="button-save-quote">
+              {updateQuote.isPending ? "שומר..." : "שמור שינויים"}
               <Check className="w-4 h-4 mr-2" />
             </Button>
           </div>
@@ -368,13 +361,11 @@ export default function QuoteNew() {
 
       <Dialog open={isProductSelectorOpen} onOpenChange={(open) => { setIsProductSelectorOpen(open); if (!open) { setProductSearch(""); setSelectedDept(null); } }}>
         <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>בחר מוצר מהקטלוג</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>בחר מוצר מהקטלוג</DialogTitle></DialogHeader>
           <div className="flex flex-col gap-3 flex-1 min-h-0">
             <div className="relative">
               <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="חיפוש לפי תיאור או ברקוד..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} className="pr-10" data-testid="input-product-search" />
+              <Input placeholder="חיפוש לפי תיאור או ברקוד..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} className="pr-10" />
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant={selectedDept === null ? "default" : "outline"} size="sm" type="button" onClick={() => setSelectedDept(null)}>כל המחלקות</Button>
@@ -403,7 +394,7 @@ export default function QuoteNew() {
                     {filteredProducts.map((p) => {
                       const alreadyAdded = items.some((item) => item.productId === p.id);
                       return (
-                        <TableRow key={p.id} className={alreadyAdded ? "opacity-50" : "hover:bg-muted/50 cursor-pointer"} onClick={() => !alreadyAdded && addProduct(p)} data-testid={`row-select-product-${p.id}`}>
+                        <TableRow key={p.id} className={alreadyAdded ? "opacity-50" : "hover:bg-muted/50 cursor-pointer"} onClick={() => !alreadyAdded && addProduct(p)}>
                           <TableCell className="font-mono text-xs">{p.barcode}</TableCell>
                           <TableCell className="font-medium">{p.description}</TableCell>
                           <TableCell><Badge variant="outline" className="text-xs">{p.department}</Badge></TableCell>
@@ -411,7 +402,7 @@ export default function QuoteNew() {
                           <TableCell className="text-primary font-semibold">{formatCurrency(p.pricePerKg)}</TableCell>
                           <TableCell>{formatCurrency(p.pricePerKg * p.weightKg)}</TableCell>
                           <TableCell>
-                            <Button size="sm" type="button" disabled={alreadyAdded} onClick={(e) => { e.stopPropagation(); addProduct(p); }} data-testid={`button-select-product-${p.id}`}>
+                            <Button size="sm" type="button" disabled={alreadyAdded} onClick={(e) => { e.stopPropagation(); addProduct(p); }}>
                               {alreadyAdded ? "נוסף" : "בחר"}
                             </Button>
                           </TableCell>

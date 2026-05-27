@@ -4,7 +4,11 @@ import { productsTable, quotesTable, quoteItemsTable } from "@workspace/db";
 import { eq, desc, sum, count } from "drizzle-orm";
 import {
   CreateQuoteBody,
+  UpdateQuoteBody,
+  UpdateQuoteStatusBody,
   GetQuoteParams,
+  UpdateQuoteParams,
+  UpdateQuoteStatusParams,
   DeleteQuoteParams,
 } from "@workspace/api-zod";
 
@@ -21,6 +25,7 @@ router.get("/quotes", async (req, res) => {
       date: quotesTable.date,
       totalAmount: quotesTable.totalAmount,
       notes: quotesTable.notes,
+      status: quotesTable.status,
       createdAt: quotesTable.createdAt,
     })
     .from(quotesTable)
@@ -104,24 +109,16 @@ router.get("/quotes/:id", async (req, res) => {
   });
 });
 
-router.post("/quotes", async (req, res) => {
-  const body = CreateQuoteBody.safeParse(req.body);
-  if (!body.success) {
-    res.status(400).json({ error: body.error.message });
-    return;
-  }
-
-  const { customerName, contactName, customerPhone, email, date: quoteDate, notes, items } = body.data;
-
-  const allProducts = await db.select().from(productsTable);
-  const productMap = Object.fromEntries(allProducts.map((p) => [p.id, p]));
-
+function resolveItems(
+  items: Array<{ productId: number; quantity: number; customPricePerKg?: number | null }>,
+  productMap: Record<number, { id: number; barcode: string; description: string; weightKg: string; pricePerKg: string }>
+) {
   let totalAmount = 0;
-  const resolvedItems = items.map((item) => {
+  const resolved = items.map((item) => {
     const product = productMap[item.productId];
     if (!product) throw new Error(`Product ${item.productId} not found`);
     const weightKg = Number(product.weightKg);
-    const pricePerKg = Number(product.pricePerKg);
+    const pricePerKg = item.customPricePerKg != null ? item.customPricePerKg : Number(product.pricePerKg);
     const totalPrice = pricePerKg * weightKg * item.quantity;
     totalAmount += totalPrice;
     return {
@@ -134,6 +131,22 @@ router.post("/quotes", async (req, res) => {
       totalPrice: String(totalPrice),
     };
   });
+  return { resolved, totalAmount };
+}
+
+router.post("/quotes", async (req, res) => {
+  const body = CreateQuoteBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const { customerName, contactName, customerPhone, email, date: quoteDate, notes, items } = body.data;
+
+  const allProducts = await db.select().from(productsTable);
+  const productMap = Object.fromEntries(allProducts.map((p) => [p.id, p]));
+
+  const { resolved: resolvedItems, totalAmount } = resolveItems(items, productMap);
 
   const [newQuote] = await db
     .insert(quotesTable)
@@ -142,9 +155,10 @@ router.post("/quotes", async (req, res) => {
       contactName: contactName ?? null,
       customerPhone: customerPhone ?? null,
       email: email ?? null,
-      date: quoteDate instanceof Date ? quoteDate.toISOString().slice(0, 10) : String(quoteDate).slice(0, 10),
+      date: String(quoteDate).slice(0, 10),
       notes: notes ?? null,
       totalAmount: String(totalAmount),
+      status: "pending",
     })
     .returning();
 
@@ -163,12 +177,107 @@ router.post("/quotes", async (req, res) => {
     ...newQuote,
     totalAmount: Number(newQuote.totalAmount),
     itemCount: savedItems.length,
+  });
+});
+
+router.put("/quotes/:id", async (req, res) => {
+  const params = UpdateQuoteParams.safeParse({ id: Number(req.params.id) });
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const body = UpdateQuoteBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [existing] = await db.select().from(quotesTable).where(eq(quotesTable.id, params.data.id));
+  if (!existing) {
+    res.status(404).json({ error: "Quote not found" });
+    return;
+  }
+
+  const { customerName, contactName, customerPhone, email, date: quoteDate, notes, items } = body.data;
+
+  const allProducts = await db.select().from(productsTable);
+  const productMap = Object.fromEntries(allProducts.map((p) => [p.id, p]));
+
+  const { resolved: resolvedItems, totalAmount } = resolveItems(items, productMap);
+
+  const [updatedQuote] = await db
+    .update(quotesTable)
+    .set({
+      customerName,
+      contactName: contactName ?? null,
+      customerPhone: customerPhone ?? null,
+      email: email ?? null,
+      date: String(quoteDate).slice(0, 10),
+      notes: notes ?? null,
+      totalAmount: String(totalAmount),
+    })
+    .where(eq(quotesTable.id, params.data.id))
+    .returning();
+
+  await db.delete(quoteItemsTable).where(eq(quoteItemsTable.quoteId, params.data.id));
+
+  if (resolvedItems.length > 0) {
+    await db.insert(quoteItemsTable).values(
+      resolvedItems.map((item) => ({ ...item, quoteId: params.data.id }))
+    );
+  }
+
+  const savedItems = await db
+    .select()
+    .from(quoteItemsTable)
+    .where(eq(quoteItemsTable.quoteId, params.data.id));
+
+  res.json({
+    ...updatedQuote,
+    totalAmount: Number(updatedQuote.totalAmount),
     items: savedItems.map((item) => ({
       ...item,
       weightKg: Number(item.weightKg),
       pricePerKg: Number(item.pricePerKg),
       totalPrice: Number(item.totalPrice),
     })),
+  });
+});
+
+router.patch("/quotes/:id/status", async (req, res) => {
+  const params = UpdateQuoteStatusParams.safeParse({ id: Number(req.params.id) });
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const body = UpdateQuoteStatusBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [updated] = await db
+    .update(quotesTable)
+    .set({ status: body.data.status })
+    .where(eq(quotesTable.id, params.data.id))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Quote not found" });
+    return;
+  }
+
+  const [itemCount] = await db
+    .select({ cnt: count() })
+    .from(quoteItemsTable)
+    .where(eq(quoteItemsTable.quoteId, params.data.id));
+
+  res.json({
+    ...updated,
+    totalAmount: Number(updated.totalAmount),
+    itemCount: Number(itemCount.cnt),
   });
 });
 

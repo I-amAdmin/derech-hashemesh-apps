@@ -5,6 +5,7 @@
  * API specification for דרך השמש wholesale quoting system
  * OpenAPI spec version: 0.1.0
  */
+import type { QuoteDetailStatus } from './quoteDetailStatus';
 import type { QuoteItem } from './quoteItem';
 
 export interface QuoteDetail {
@@ -18,6 +19,7 @@ export interface QuoteDetail {
   email?: string | null;
   date: Date;
   totalAmount: number;
+  status: QuoteDetailStatus;
   /** @nullable */
   notes?: string | null;
   createdAt: Date;
