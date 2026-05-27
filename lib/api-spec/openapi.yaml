@@ -13,6 +13,8 @@ tags:
     description: Product catalog management
   - name: quotes
     description: Wholesale price quotes
+  - name: customers
+    description: Customer management
 
 paths:
   /healthz:
@@ -135,6 +137,80 @@ paths:
         "404":
           description: Not found
 
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: List all customers
+      responses:
+        "200":
+          description: List of customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      summary: Create a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+
+  /customers/{id}:
+    put:
+      operationId: updateCustomer
+      tags: [customers]
+      summary: Update a customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      summary: Delete a customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
   /quotes:
     get:
       operationId: listQuotes
@@ -225,6 +301,38 @@ components:
           type: string
       required:
         - status
+
+    Customer:
+      type: object
+      required: [id, businessName, createdAt]
+      properties:
+        id:
+          type: integer
+        businessName:
+          type: string
+        contactName:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        email:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    CustomerInput:
+      type: object
+      required: [businessName]
+      properties:
+        businessName:
+          type: string
+          minLength: 1
+        contactName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
 
     Product:
       type: object
@@ -342,7 +450,11 @@ components:
           type: integer
         customerName:
           type: string
+        contactName:
+          type: ["string", "null"]
         customerPhone:
+          type: ["string", "null"]
+        email:
           type: ["string", "null"]
         date:
           type: string
@@ -365,7 +477,11 @@ components:
           type: integer
         customerName:
           type: string
+        contactName:
+          type: ["string", "null"]
         customerPhone:
+          type: ["string", "null"]
+        email:
           type: ["string", "null"]
         date:
           type: string
@@ -389,7 +505,11 @@ components:
         customerName:
           type: string
           minLength: 1
+        contactName:
+          type: string
         customerPhone:
+          type: string
+        email:
           type: string
         date:
           type: string

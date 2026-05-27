@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './customer';
+export * from './customerInput';
 export * from './healthStatus';
 export * from './product';
 export * from './productInput';

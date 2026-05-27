@@ -9,6 +9,26 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface Customer {
+  id: number;
+  businessName: string;
+  /** @nullable */
+  contactName?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  email?: string | null;
+  createdAt: string;
+}
+
+export interface CustomerInput {
+  /** @minLength 1 */
+  businessName: string;
+  contactName?: string;
+  phone?: string;
+  email?: string;
+}
+
 export interface Product {
   id: number;
   barcode: string;
@@ -77,7 +97,11 @@ export interface Quote {
   id: number;
   customerName: string;
   /** @nullable */
+  contactName?: string | null;
+  /** @nullable */
   customerPhone?: string | null;
+  /** @nullable */
+  email?: string | null;
   date: string;
   totalAmount: number;
   itemCount: number;
@@ -90,7 +114,11 @@ export interface QuoteDetail {
   id: number;
   customerName: string;
   /** @nullable */
+  contactName?: string | null;
+  /** @nullable */
   customerPhone?: string | null;
+  /** @nullable */
+  email?: string | null;
   date: string;
   totalAmount: number;
   /** @nullable */
@@ -102,7 +130,9 @@ export interface QuoteDetail {
 export interface QuoteInput {
   /** @minLength 1 */
   customerName: string;
+  contactName?: string;
   customerPhone?: string;
+  email?: string;
   date: string;
   notes?: string;
   items: QuoteItemInput[];

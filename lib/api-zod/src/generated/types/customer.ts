@@ -6,19 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Quote {
+export interface Customer {
   id: number;
-  customerName: string;
+  businessName: string;
   /** @nullable */
   contactName?: string | null;
   /** @nullable */
-  customerPhone?: string | null;
+  phone?: string | null;
   /** @nullable */
   email?: string | null;
-  date: Date;
-  totalAmount: number;
-  itemCount: number;
-  /** @nullable */
-  notes?: string | null;
   createdAt: Date;
 }

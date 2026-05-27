@@ -9,6 +9,7 @@ import Products from "@/pages/products";
 import Quotes from "@/pages/quotes";
 import QuoteNew from "@/pages/quote-new";
 import QuoteDetail from "@/pages/quote-detail";
+import Customers from "@/pages/customers";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ function Router() {
       <Route path="/quotes" component={Quotes} />
       <Route path="/quotes/new" component={QuoteNew} />
       <Route path="/quotes/:id" component={QuoteDetail} />
+      <Route path="/customers" component={Customers} />
       <Route component={NotFound} />
     </Switch>
   );

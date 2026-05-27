@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { LayoutDashboard, Package, FileText } from "lucide-react";
+import { LayoutDashboard, Package, FileText, Users } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -7,6 +7,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { href: "/", label: "ראשי", icon: LayoutDashboard },
     { href: "/quotes", label: "הצעות מחיר", icon: FileText },
+    { href: "/customers", label: "לקוחות", icon: Users },
     { href: "/products", label: "מוצרים", icon: Package },
   ];
 

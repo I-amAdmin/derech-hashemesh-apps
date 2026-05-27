@@ -15,7 +15,9 @@ router.get("/quotes", async (req, res) => {
     .select({
       id: quotesTable.id,
       customerName: quotesTable.customerName,
+      contactName: quotesTable.contactName,
       customerPhone: quotesTable.customerPhone,
+      email: quotesTable.email,
       date: quotesTable.date,
       totalAmount: quotesTable.totalAmount,
       notes: quotesTable.notes,
@@ -109,7 +111,7 @@ router.post("/quotes", async (req, res) => {
     return;
   }
 
-  const { customerName, customerPhone, date: quoteDate, notes, items } = body.data;
+  const { customerName, contactName, customerPhone, email, date: quoteDate, notes, items } = body.data;
 
   const allProducts = await db.select().from(productsTable);
   const productMap = Object.fromEntries(allProducts.map((p) => [p.id, p]));
@@ -137,7 +139,9 @@ router.post("/quotes", async (req, res) => {
     .insert(quotesTable)
     .values({
       customerName,
+      contactName: contactName ?? null,
       customerPhone: customerPhone ?? null,
+      email: email ?? null,
       date: quoteDate instanceof Date ? quoteDate.toISOString().slice(0, 10) : String(quoteDate).slice(0, 10),
       notes: notes ?? null,
       totalAmount: String(totalAmount),
