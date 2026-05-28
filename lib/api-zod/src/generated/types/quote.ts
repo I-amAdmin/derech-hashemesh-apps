@@ -24,5 +24,7 @@ export interface Quote {
   notes?: string | null;
   /** @nullable */
   shareToken?: string | null;
+  /** @nullable */
+  viewedAt?: Date | null;
   createdAt: Date;
 }

@@ -591,6 +591,9 @@ components:
           type: ["string", "null"]
         shareToken:
           type: ["string", "null"]
+        viewedAt:
+          type: ["string", "null"]
+          format: date-time
         createdAt:
           type: string
           format: date-time
@@ -621,6 +624,9 @@ components:
           type: ["string", "null"]
         shareToken:
           type: ["string", "null"]
+        viewedAt:
+          type: ["string", "null"]
+          format: date-time
         createdAt:
           type: string
           format: date-time

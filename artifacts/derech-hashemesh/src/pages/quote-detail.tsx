@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check } from "lucide-react";
+import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import * as XLSX from "xlsx";
@@ -279,6 +279,18 @@ export default function QuoteDetail() {
           </Button>
         </div>
       </div>
+
+      {/* Viewed indicator */}
+      {quote.viewedAt && (
+        <div className="mb-4 print:hidden bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-emerald-800" data-testid="badge-viewed-at">
+          <Eye className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>
+            <span className="font-semibold">הלקוח צפה בהצעה</span>
+            {" — "}
+            {new Date(quote.viewedAt).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}
+          </span>
+        </div>
+      )}
 
       {/* Share link panel */}
       {shareUrl && (

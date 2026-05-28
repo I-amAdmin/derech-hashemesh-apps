@@ -14,6 +14,7 @@ export const quotesTable = pgTable("quotes", {
   notes: text("notes"),
   status: text("status").notNull().default("pending"),
   shareToken: text("share_token").unique(),
+  viewedAt: timestamp("viewed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
