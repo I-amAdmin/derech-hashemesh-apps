@@ -27,6 +27,8 @@ router.get("/quotes", async (req, res) => {
       totalAmount: quotesTable.totalAmount,
       notes: quotesTable.notes,
       status: quotesTable.status,
+      shareToken: quotesTable.shareToken,
+      viewedAt: quotesTable.viewedAt,
       createdAt: quotesTable.createdAt,
     })
     .from(quotesTable)
@@ -61,14 +63,24 @@ router.get("/quotes/public/:token", async (req, res) => {
     return;
   }
 
+  let finalQuote = quote;
+  if (!quote.viewedAt) {
+    const [updated] = await db
+      .update(quotesTable)
+      .set({ viewedAt: new Date() })
+      .where(eq(quotesTable.id, quote.id))
+      .returning();
+    finalQuote = updated;
+  }
+
   const items = await db
     .select()
     .from(quoteItemsTable)
     .where(eq(quoteItemsTable.quoteId, quote.id));
 
   res.json({
-    ...quote,
-    totalAmount: Number(quote.totalAmount),
+    ...finalQuote,
+    totalAmount: Number(finalQuote.totalAmount),
     items: items.map((item) => ({
       ...item,
       weightKg: Number(item.weightKg),

@@ -152,7 +152,19 @@ export default function Quotes() {
                 <TableRow key={quote.id}>
                   <TableCell className="font-medium">#{quote.id}</TableCell>
                   <TableCell className="font-medium">
-                    {quote.customerName}
+                    <div className="flex items-center gap-2">
+                      {quote.customerName}
+                      {quote.viewedAt && (
+                        <span
+                          className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 font-medium shrink-0"
+                          title={`נצפה ב-${new Date(quote.viewedAt).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}`}
+                          data-testid={`badge-viewed-${quote.id}`}
+                        >
+                          <Eye className="w-3 h-3" />
+                          נצפה
+                        </span>
+                      )}
+                    </div>
                     {quote.customerPhone && <div className="text-xs text-muted-foreground mt-0.5">{quote.customerPhone}</div>}
                   </TableCell>
                   <TableCell>{formatDate(quote.date)}</TableCell>

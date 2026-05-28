@@ -205,6 +205,7 @@ export const ListQuotesResponseItem = zod.object({
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
+  "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListQuotesResponse = zod.array(ListQuotesResponseItem)
@@ -252,6 +253,7 @@ export const GetQuotesSummaryResponse = zod.object({
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
+  "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 }))
 })
@@ -275,6 +277,7 @@ export const GetQuoteResponse = zod.object({
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
+  "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.number(),
@@ -327,6 +330,7 @@ export const UpdateQuoteResponse = zod.object({
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
+  "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.number(),
@@ -372,6 +376,7 @@ export const UpdateQuoteStatusResponse = zod.object({
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
+  "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
 })
 
@@ -406,6 +411,7 @@ export const GetPublicQuoteResponse = zod.object({
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
+  "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.number(),
@@ -438,6 +444,7 @@ export const ApprovePublicQuoteResponse = zod.object({
   "status": zod.enum(['pending', 'approved', 'cancelled']),
   "notes": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
+  "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "items": zod.array(zod.object({
   "id": zod.number(),
