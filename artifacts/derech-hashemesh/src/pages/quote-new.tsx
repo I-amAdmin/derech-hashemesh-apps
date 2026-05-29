@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Layout } from "@/components/layout";
 import {
   useListProducts,
@@ -70,6 +70,25 @@ export default function QuoteNew() {
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
   const items = form.watch("items");
+
+  useEffect(() => {
+    if (!products || products.length === 0) return;
+    const stored = sessionStorage.getItem("preselected_products");
+    if (!stored) return;
+    sessionStorage.removeItem("preselected_products");
+    try {
+      const ids: number[] = JSON.parse(stored);
+      if (!Array.isArray(ids) || ids.length === 0) return;
+      ids.forEach((id) => {
+        const product = products.find((p) => p.id === id);
+        if (product) {
+          append({ productId: product.id, quantity: 1, customPricePerKg: product.pricePerKg });
+        }
+      });
+    } catch {
+      // ignore malformed data
+    }
+  }, [products]);
 
   const fillFromCustomer = (customerId: number) => {
     const c = customers?.find((c) => c.id === customerId);
