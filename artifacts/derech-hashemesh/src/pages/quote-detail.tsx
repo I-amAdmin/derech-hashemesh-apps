@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check, Eye } from "lucide-react";
+import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check, Eye, MessageSquareDiff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import * as XLSX from "xlsx";
@@ -16,18 +16,21 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "ממתינה",
   approved: "אושרה",
   cancelled: "בוטלה",
+  changes_requested: "התבקשו שינויים",
 };
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
   approved: "bg-green-100 text-green-800 border-green-300",
   cancelled: "bg-red-100 text-red-800 border-red-300",
+  changes_requested: "bg-orange-100 text-orange-800 border-orange-300",
 };
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
   pending: <Clock className="w-4 h-4" />,
   approved: <CheckCircle2 className="w-4 h-4" />,
   cancelled: <XCircle className="w-4 h-4" />,
+  changes_requested: <MessageSquareDiff className="w-4 h-4" />,
 };
 
 export default function QuoteDetail() {
@@ -279,6 +282,17 @@ export default function QuoteDetail() {
           </Button>
         </div>
       </div>
+
+      {/* Customer note (changes requested) */}
+      {quote.customerNote && (
+        <div className="mb-4 print:hidden bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-start gap-2 text-sm text-orange-900" data-testid="badge-customer-note">
+          <MessageSquareDiff className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold">הלקוח ביקש שינויים: </span>
+            <span className="whitespace-pre-wrap">{quote.customerNote}</span>
+          </div>
+        </div>
+      )}
 
       {/* Viewed indicator */}
       {quote.viewedAt && (

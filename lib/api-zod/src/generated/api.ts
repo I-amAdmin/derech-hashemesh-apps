@@ -202,8 +202,9 @@ export const ListQuotesResponseItem = zod.object({
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
   "itemCount": zod.number(),
-  "status": zod.enum(['pending', 'approved', 'cancelled']),
+  "status": zod.enum(['pending', 'approved', 'cancelled', 'changes_requested']),
   "notes": zod.string().nullish(),
+  "customerNote": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
   "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -250,8 +251,9 @@ export const GetQuotesSummaryResponse = zod.object({
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
   "itemCount": zod.number(),
-  "status": zod.enum(['pending', 'approved', 'cancelled']),
+  "status": zod.enum(['pending', 'approved', 'cancelled', 'changes_requested']),
   "notes": zod.string().nullish(),
+  "customerNote": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
   "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -274,8 +276,9 @@ export const GetQuoteResponse = zod.object({
   "email": zod.string().nullish(),
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
-  "status": zod.enum(['pending', 'approved', 'cancelled']),
+  "status": zod.enum(['pending', 'approved', 'cancelled', 'changes_requested']),
   "notes": zod.string().nullish(),
+  "customerNote": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
   "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -327,8 +330,9 @@ export const UpdateQuoteResponse = zod.object({
   "email": zod.string().nullish(),
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
-  "status": zod.enum(['pending', 'approved', 'cancelled']),
+  "status": zod.enum(['pending', 'approved', 'cancelled', 'changes_requested']),
   "notes": zod.string().nullish(),
+  "customerNote": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
   "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -373,8 +377,9 @@ export const UpdateQuoteStatusResponse = zod.object({
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
   "itemCount": zod.number(),
-  "status": zod.enum(['pending', 'approved', 'cancelled']),
+  "status": zod.enum(['pending', 'approved', 'cancelled', 'changes_requested']),
   "notes": zod.string().nullish(),
+  "customerNote": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
   "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date()
@@ -408,8 +413,9 @@ export const GetPublicQuoteResponse = zod.object({
   "email": zod.string().nullish(),
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
-  "status": zod.enum(['pending', 'approved', 'cancelled']),
+  "status": zod.enum(['pending', 'approved', 'cancelled', 'changes_requested']),
   "notes": zod.string().nullish(),
+  "customerNote": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
   "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -441,8 +447,50 @@ export const ApprovePublicQuoteResponse = zod.object({
   "email": zod.string().nullish(),
   "date": zod.coerce.date(),
   "totalAmount": zod.number(),
-  "status": zod.enum(['pending', 'approved', 'cancelled']),
+  "status": zod.enum(['pending', 'approved', 'cancelled', 'changes_requested']),
   "notes": zod.string().nullish(),
+  "customerNote": zod.string().nullish(),
+  "shareToken": zod.string().nullish(),
+  "viewedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "productId": zod.number(),
+  "barcode": zod.string(),
+  "description": zod.string(),
+  "weightKg": zod.number(),
+  "pricePerKg": zod.number(),
+  "quantity": zod.number(),
+  "totalPrice": zod.number()
+}))
+})
+
+
+/**
+ * @summary Request changes on a quote via its public share token
+ */
+export const RequestChangesPublicQuoteParams = zod.object({
+  "token": zod.coerce.string()
+})
+
+
+
+
+export const RequestChangesPublicQuoteBody = zod.object({
+  "note": zod.string().min(1)
+})
+
+export const RequestChangesPublicQuoteResponse = zod.object({
+  "id": zod.number(),
+  "customerName": zod.string(),
+  "contactName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
+  "email": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "totalAmount": zod.number(),
+  "status": zod.enum(['pending', 'approved', 'cancelled', 'changes_requested']),
+  "notes": zod.string().nullish(),
+  "customerNote": zod.string().nullish(),
   "shareToken": zod.string().nullish(),
   "viewedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),

@@ -23,6 +23,8 @@ export interface QuoteDetail {
   /** @nullable */
   notes?: string | null;
   /** @nullable */
+  customerNote?: string | null;
+  /** @nullable */
   shareToken?: string | null;
   /** @nullable */
   viewedAt?: Date | null;

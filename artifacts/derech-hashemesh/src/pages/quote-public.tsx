@@ -1,10 +1,11 @@
 import { useParams } from "wouter";
-import { useGetPublicQuote, useApprovePublicQuote, getGetPublicQuoteQueryKey } from "@workspace/api-client-react";
+import { useGetPublicQuote, useApprovePublicQuote, useRequestChangesPublicQuote, getGetPublicQuoteQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Phone, Mail, CheckCircle2, Clock, XCircle, Loader2 } from "lucide-react";
+import { Phone, Mail, CheckCircle2, Clock, XCircle, Loader2, MessageSquareDiff } from "lucide-react";
 import { useState } from "react";
 
 const ORDER_PHONE = "054-8070533";
@@ -13,18 +14,21 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "ממתינה לאישור",
   approved: "אושרה",
   cancelled: "בוטלה",
+  changes_requested: "התבקשו שינויים",
 };
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
   approved: "bg-green-100 text-green-800 border-green-300",
   cancelled: "bg-red-100 text-red-800 border-red-300",
+  changes_requested: "bg-orange-100 text-orange-800 border-orange-300",
 };
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
   pending: <Clock className="w-4 h-4" />,
   approved: <CheckCircle2 className="w-4 h-4" />,
   cancelled: <XCircle className="w-4 h-4" />,
+  changes_requested: <MessageSquareDiff className="w-4 h-4" />,
 };
 
 export default function QuotePublic() {
@@ -32,12 +36,16 @@ export default function QuotePublic() {
   const token = params.token || "";
   const queryClient = useQueryClient();
   const [approveSuccess, setApproveSuccess] = useState(false);
+  const [showChangeForm, setShowChangeForm] = useState(false);
+  const [changeNote, setChangeNote] = useState("");
+  const [changeSuccess, setChangeSuccess] = useState(false);
 
   const { data: quote, isLoading, isError } = useGetPublicQuote(token, {
     query: { enabled: !!token, queryKey: getGetPublicQuoteQueryKey(token) },
   });
 
   const approveQuote = useApprovePublicQuote();
+  const requestChanges = useRequestChangesPublicQuote();
 
   const handleApprove = () => {
     approveQuote.mutate(
@@ -46,6 +54,20 @@ export default function QuotePublic() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetPublicQuoteQueryKey(token) });
           setApproveSuccess(true);
+        },
+      }
+    );
+  };
+
+  const handleRequestChanges = () => {
+    if (!changeNote.trim()) return;
+    requestChanges.mutate(
+      { token, data: { note: changeNote.trim() } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetPublicQuoteQueryKey(token) });
+          setChangeSuccess(true);
+          setShowChangeForm(false);
         },
       }
     );
@@ -78,27 +100,71 @@ export default function QuotePublic() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4" dir="rtl">
       <div className="max-w-4xl mx-auto">
-        {/* Customer approval banner */}
-        {status === "pending" && !approveSuccess && (
-          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-5 flex flex-col sm:flex-row items-center gap-4 justify-between shadow-sm">
-            <div>
-              <h2 className="text-base font-semibold text-blue-900">לאישור הצעת המחיר</h2>
-              <p className="text-sm text-blue-700 mt-0.5">לחץ על "אני מאשר" כדי לאשר את הצעת המחיר ולעדכן את הסטטוס.</p>
+        {/* Customer action banner — pending */}
+        {status === "pending" && !approveSuccess && !changeSuccess && (
+          <div className="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-5 shadow-sm">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-blue-900">לאישור הצעת המחיר</h2>
+                <p className="text-sm text-blue-700 mt-0.5">אשר את ההצעה, או בקש שינויים אם יש הערות.</p>
+              </div>
+              <div className="flex gap-2 flex-wrap shrink-0">
+                <Button
+                  size="lg"
+                  className="bg-green-600 hover:bg-green-700 text-white gap-2 whitespace-nowrap shadow-sm"
+                  onClick={handleApprove}
+                  disabled={approveQuote.isPending || requestChanges.isPending}
+                  data-testid="button-approve-quote"
+                >
+                  {approveQuote.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4" />
+                  )}
+                  אני מאשר
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 whitespace-nowrap border-orange-400 text-orange-700 hover:bg-orange-50"
+                  onClick={() => setShowChangeForm((v) => !v)}
+                  disabled={approveQuote.isPending || requestChanges.isPending}
+                  data-testid="button-request-changes"
+                >
+                  <MessageSquareDiff className="w-4 h-4" />
+                  בקש שינויים
+                </Button>
+              </div>
             </div>
-            <Button
-              size="lg"
-              className="bg-green-600 hover:bg-green-700 text-white gap-2 whitespace-nowrap shadow-sm"
-              onClick={handleApprove}
-              disabled={approveQuote.isPending}
-              data-testid="button-approve-quote"
-            >
-              {approveQuote.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4" />
-              )}
-              אני מאשר
-            </Button>
+
+            {showChangeForm && (
+              <div className="mt-4 flex flex-col gap-3 border-t border-blue-200 pt-4">
+                <label className="text-sm font-medium text-blue-900">הערה לבעל העסק (חובה)</label>
+                <Textarea
+                  dir="rtl"
+                  placeholder="תאר את השינויים הנדרשים..."
+                  value={changeNote}
+                  onChange={(e) => setChangeNote(e.target.value)}
+                  className="bg-white border-blue-300 focus:border-blue-500 resize-none"
+                  rows={3}
+                  data-testid="textarea-change-note"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    className="bg-orange-600 hover:bg-orange-700 text-white gap-2"
+                    onClick={handleRequestChanges}
+                    disabled={!changeNote.trim() || requestChanges.isPending}
+                    data-testid="button-submit-changes"
+                  >
+                    {requestChanges.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquareDiff className="w-4 h-4" />}
+                    שלח בקשה
+                  </Button>
+                  <Button variant="ghost" onClick={() => setShowChangeForm(false)} className="text-blue-700">
+                    ביטול
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -108,6 +174,16 @@ export default function QuotePublic() {
             <div>
               <h2 className="text-base font-semibold text-green-900">הצעת המחיר אושרה!</h2>
               <p className="text-sm text-green-700 mt-0.5">קיבלנו את אישורך. ניצור איתך קשר בהמשך.</p>
+            </div>
+          </div>
+        )}
+
+        {(status === "changes_requested" || changeSuccess) && (
+          <div className="mb-6 bg-orange-50 border border-orange-200 rounded-xl p-5 flex items-center gap-3 shadow-sm">
+            <MessageSquareDiff className="w-6 h-6 text-orange-500 shrink-0" />
+            <div>
+              <h2 className="text-base font-semibold text-orange-900">בקשת השינויים נשלחה!</h2>
+              <p className="text-sm text-orange-700 mt-0.5">קיבלנו את הערתך. ניצור איתך קשר בהמשך.</p>
             </div>
           </div>
         )}
