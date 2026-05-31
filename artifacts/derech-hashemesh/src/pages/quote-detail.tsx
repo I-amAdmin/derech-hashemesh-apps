@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check, Eye, MessageSquareDiff, Link2Off } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
@@ -299,10 +300,23 @@ export default function QuoteDetail() {
             <MessageCircle className="w-4 h-4" />
             וואטסאפ
           </Button>
-          <Button variant="outline" size="sm" onClick={handleEmail} className="gap-2" data-testid="button-email" disabled={!quote?.email}>
-            <Mail className="w-4 h-4" />
-            מייל
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={!quote?.email ? "cursor-not-allowed inline-flex" : "inline-flex"}>
+                  <Button variant="outline" size="sm" onClick={handleEmail} className="gap-2" data-testid="button-email" disabled={!quote?.email}>
+                    <Mail className="w-4 h-4" />
+                    מייל
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {!quote?.email && (
+                <TooltipContent side="top" dir="rtl">
+                  אין כתובת מייל ללקוח זה
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
           <Button variant="outline" size="sm" onClick={handleDownloadPdf} className="gap-2" data-testid="button-download-pdf">
             <Download className="w-4 h-4" />
             PDF
