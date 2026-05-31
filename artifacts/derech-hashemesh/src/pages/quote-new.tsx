@@ -54,6 +54,7 @@ export default function QuoteNew() {
   const [productSearch, setProductSearch] = useState("");
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
+  const [pendingSelection, setPendingSelection] = useState<Set<number>>(new Set());
 
   const form = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteSchema),
@@ -115,15 +116,30 @@ export default function QuoteNew() {
     });
   }, [products, productSearch, selectedDept]);
 
-  const addProduct = (product: { id: number; pricePerKg: number }) => {
-    const exists = items.some((item) => item.productId === product.id);
-    if (exists) {
-      toast({ title: "המוצר כבר קיים בהצעת המחיר", variant: "destructive" });
-      return;
-    }
-    append({ productId: product.id, quantity: 1, customPricePerKg: product.pricePerKg });
+  const togglePending = (id: number) => {
+    setPendingSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const confirmAddProducts = () => {
+    const toAdd = (products ?? []).filter(
+      (p) => pendingSelection.has(p.id) && !items.some((item) => item.productId === p.id)
+    );
+    toAdd.forEach((p) => append({ productId: p.id, quantity: 1, customPricePerKg: p.pricePerKg }));
+    setPendingSelection(new Set());
     setIsProductSelectorOpen(false);
     setProductSearch("");
+    setSelectedDept(null);
+  };
+
+  const closeSelectorDialog = () => {
+    setPendingSelection(new Set());
+    setProductSearch("");
+    setSelectedDept(null);
+    setIsProductSelectorOpen(false);
   };
 
   const getProductDetails = (productId: number) => products?.find((p) => p.id === productId);
@@ -385,12 +401,20 @@ export default function QuoteNew() {
         </form>
       </Form>
 
-      <Dialog open={isProductSelectorOpen} onOpenChange={(open) => { setIsProductSelectorOpen(open); if (!open) { setProductSearch(""); setSelectedDept(null); } }}>
-        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>בחר מוצר מהקטלוג</DialogTitle>
+      <Dialog open={isProductSelectorOpen} onOpenChange={(open) => { if (!open) closeSelectorDialog(); }}>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col gap-0 p-0">
+          <DialogHeader className="px-6 pt-6 pb-3">
+            <DialogTitle className="flex items-center justify-between">
+              <span>בחר מוצרים מהקטלוג</span>
+              {pendingSelection.size > 0 && (
+                <Badge className="bg-primary text-white text-sm px-3 py-1">
+                  {pendingSelection.size} נבחרו
+                </Badge>
+              )}
+            </DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-3 flex-1 min-h-0">
+
+          <div className="flex flex-col gap-3 flex-1 min-h-0 px-6 pb-3">
             <div className="relative">
               <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input placeholder="חיפוש לפי תיאור או ברקוד..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} className="pr-10" data-testid="input-product-search" />
@@ -405,41 +429,100 @@ export default function QuoteNew() {
               ))}
             </div>
             <div className="overflow-y-auto flex-1 rounded-md border min-h-0">
-              {isLoadingProducts ? <div className="p-4 text-center">טוען מוצרים...</div> : filteredProducts.length === 0 ? <div className="p-4 text-center text-muted-foreground">לא נמצאו מוצרים</div> : (
+              {isLoadingProducts ? (
+                <div className="p-4 text-center">טוען מוצרים...</div>
+              ) : filteredProducts.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground">לא נמצאו מוצרים</div>
+              ) : (
                 <Table>
                   <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
-                      <TableHead className="text-right">ברקוד</TableHead>
+                      <TableHead className="w-[48px] pr-4">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded accent-[#8B7040] cursor-pointer"
+                          checked={filteredProducts.filter(p => !items.some(i => i.productId === p.id)).every(p => pendingSelection.has(p.id)) && filteredProducts.some(p => !items.some(i => i.productId === p.id))}
+                          ref={(el) => {
+                            if (el) {
+                              const available = filteredProducts.filter(p => !items.some(i => i.productId === p.id));
+                              const selectedCount = available.filter(p => pendingSelection.has(p.id)).length;
+                              el.indeterminate = selectedCount > 0 && selectedCount < available.length;
+                            }
+                          }}
+                          onChange={(e) => {
+                            const available = filteredProducts.filter(p => !items.some(i => i.productId === p.id));
+                            setPendingSelection(prev => {
+                              const next = new Set(prev);
+                              if (e.target.checked) available.forEach(p => next.add(p.id));
+                              else available.forEach(p => next.delete(p.id));
+                              return next;
+                            });
+                          }}
+                          aria-label="בחר הכל"
+                        />
+                      </TableHead>
                       <TableHead className="text-right">תיאור פריט</TableHead>
                       <TableHead className="text-right">מחלקה</TableHead>
                       <TableHead className="text-right">משקל (ק"ג)</TableHead>
                       <TableHead className="text-right">מחיר לק"ג</TableHead>
                       <TableHead className="text-right">מחיר ליח'</TableHead>
-                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredProducts.map((p) => {
                       const alreadyAdded = items.some((item) => item.productId === p.id);
+                      const isChecked = pendingSelection.has(p.id);
                       return (
-                        <TableRow key={p.id} className={alreadyAdded ? "opacity-50" : "hover:bg-muted/50 cursor-pointer"} onClick={() => !alreadyAdded && addProduct(p)} data-testid={`row-select-product-${p.id}`}>
-                          <TableCell className="font-mono text-xs">{p.barcode}</TableCell>
-                          <TableCell className="font-medium">{p.description}</TableCell>
+                        <TableRow
+                          key={p.id}
+                          className={alreadyAdded ? "opacity-40 bg-muted/20" : isChecked ? "bg-primary/5 cursor-pointer" : "hover:bg-muted/50 cursor-pointer"}
+                          onClick={() => !alreadyAdded && togglePending(p.id)}
+                          data-testid={`row-select-product-${p.id}`}
+                        >
+                          <TableCell className="pr-4">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 rounded accent-[#8B7040] cursor-pointer disabled:cursor-not-allowed"
+                              checked={alreadyAdded || isChecked}
+                              disabled={alreadyAdded}
+                              onChange={() => !alreadyAdded && togglePending(p.id)}
+                              onClick={(e) => e.stopPropagation()}
+                              data-testid={`checkbox-product-${p.id}`}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{p.description}</div>
+                            <div className="text-xs text-muted-foreground font-mono">{p.barcode}</div>
+                            {alreadyAdded && <div className="text-xs text-green-600 font-medium">✓ כבר בהצעה</div>}
+                          </TableCell>
                           <TableCell><Badge variant="outline" className="text-xs">{p.department}</Badge></TableCell>
                           <TableCell>{formatNumber(p.weightKg)}</TableCell>
                           <TableCell className="text-primary font-semibold">{formatCurrency(p.pricePerKg)}</TableCell>
                           <TableCell>{formatCurrency(p.pricePerKg * p.weightKg)}</TableCell>
-                          <TableCell>
-                            <Button size="sm" type="button" disabled={alreadyAdded} onClick={(e) => { e.stopPropagation(); addProduct(p); }} data-testid={`button-select-product-${p.id}`}>
-                              {alreadyAdded ? "נוסף" : "בחר"}
-                            </Button>
-                          </TableCell>
                         </TableRow>
                       );
                     })}
                   </TableBody>
                 </Table>
               )}
+            </div>
+          </div>
+
+          <div className="border-t px-6 py-4 flex items-center justify-between gap-3 bg-muted/30">
+            <span className="text-sm text-muted-foreground">
+              {pendingSelection.size > 0 ? `${pendingSelection.size} מוצרים נבחרו` : "סמן מוצרים להוספה"}
+            </span>
+            <div className="flex gap-2">
+              <Button variant="outline" type="button" onClick={closeSelectorDialog}>ביטול</Button>
+              <Button
+                type="button"
+                disabled={pendingSelection.size === 0}
+                onClick={confirmAddProducts}
+                data-testid="button-confirm-add-products"
+              >
+                <Plus className="w-4 h-4 ml-2" />
+                הוסף {pendingSelection.size > 0 ? `${pendingSelection.size} ` : ""}מוצרים
+              </Button>
             </div>
           </div>
         </DialogContent>
