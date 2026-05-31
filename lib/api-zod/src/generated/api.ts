@@ -399,6 +399,14 @@ export const GenerateQuoteShareTokenResponse = zod.object({
 
 
 /**
+ * @summary Revoke the shareable link for a quote (clears the share token)
+ */
+export const RevokeQuoteShareTokenParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary Get a quote by its public share token (no auth required)
  */
 export const GetPublicQuoteParams = zod.object({

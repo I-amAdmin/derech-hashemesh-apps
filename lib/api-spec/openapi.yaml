@@ -364,6 +364,21 @@ paths:
                 $ref: "#/components/schemas/QuoteShareToken"
         "404":
           description: Not found
+    delete:
+      operationId: revokeQuoteShareToken
+      tags: [quotes]
+      summary: Revoke the shareable link for a quote (clears the share token)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Share token revoked
+        "404":
+          description: Not found
 
   /quotes/public/{token}:
     get:

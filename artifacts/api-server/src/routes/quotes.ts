@@ -427,6 +427,27 @@ router.delete("/quotes/:id", async (req, res) => {
   res.status(204).send();
 });
 
+router.delete("/quotes/:id/share", async (req, res) => {
+  const params = GetQuoteParams.safeParse({ id: Number(req.params.id) });
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const [existing] = await db.select().from(quotesTable).where(eq(quotesTable.id, params.data.id));
+  if (!existing) {
+    res.status(404).json({ error: "Quote not found" });
+    return;
+  }
+
+  await db
+    .update(quotesTable)
+    .set({ shareToken: null })
+    .where(eq(quotesTable.id, params.data.id));
+
+  res.status(204).send();
+});
+
 router.post("/quotes/:id/share", async (req, res) => {
   const params = GetQuoteParams.safeParse({ id: Number(req.params.id) });
   if (!params.success) {

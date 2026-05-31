@@ -1446,6 +1446,76 @@ export const useGenerateQuoteShareToken = <TError = ErrorType<void>,
       return useMutation(getGenerateQuoteShareTokenMutationOptions(options));
     }
 
+export const getRevokeQuoteShareTokenUrl = (id: number,) => {
+
+
+
+
+  return `/api/quotes/${id}/share`
+}
+
+/**
+ * @summary Revoke the shareable link for a quote (clears the share token)
+ */
+export const revokeQuoteShareToken = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getRevokeQuoteShareTokenUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getRevokeQuoteShareTokenMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeQuoteShareToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof revokeQuoteShareToken>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['revokeQuoteShareToken'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof revokeQuoteShareToken>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  revokeQuoteShareToken(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RevokeQuoteShareTokenMutationResult = NonNullable<Awaited<ReturnType<typeof revokeQuoteShareToken>>>
+
+    export type RevokeQuoteShareTokenMutationError = ErrorType<void>
+
+    /**
+ * @summary Revoke the shareable link for a quote (clears the share token)
+ */
+export const useRevokeQuoteShareToken = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof revokeQuoteShareToken>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof revokeQuoteShareToken>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRevokeQuoteShareTokenMutationOptions(options));
+    }
+
 export const getGetPublicQuoteUrl = (token: string,) => {
 
 

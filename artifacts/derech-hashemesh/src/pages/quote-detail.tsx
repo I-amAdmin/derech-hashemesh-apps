@@ -1,13 +1,13 @@
 import { Layout } from "@/components/layout";
 import { useParams, Link } from "wouter";
-import { useGetQuote, useUpdateQuoteStatus, useGenerateQuoteShareToken, getGetQuoteQueryKey, getListQuotesQueryKey, getGetQuotesSummaryQueryKey } from "@workspace/api-client-react";
+import { useGetQuote, useUpdateQuoteStatus, useGenerateQuoteShareToken, useRevokeQuoteShareToken, getGetQuoteQueryKey, getListQuotesQueryKey, getGetQuotesSummaryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check, Eye, MessageSquareDiff } from "lucide-react";
+import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check, Eye, MessageSquareDiff, Link2Off } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 
 const ORDER_PHONE = "054-8070533";
@@ -44,8 +44,16 @@ export default function QuoteDetail() {
   const { data: quote, isLoading } = useGetQuote(quoteId, {
     query: { enabled: !!quoteId, queryKey: getGetQuoteQueryKey(quoteId) },
   });
+
+  useEffect(() => {
+    if (quote?.shareToken && !shareUrl) {
+      setShareUrl(`${window.location.origin}${import.meta.env.BASE_URL}q/${quote.shareToken}`);
+    }
+  }, [quote?.shareToken]);
+
   const updateStatus = useUpdateQuoteStatus();
   const generateShareToken = useGenerateQuoteShareToken();
+  const revokeShareToken = useRevokeQuoteShareToken();
 
   const handleShare = () => {
     generateShareToken.mutate(
@@ -54,8 +62,23 @@ export default function QuoteDetail() {
         onSuccess: (data) => {
           const url = `${window.location.origin}${import.meta.env.BASE_URL}q/${data.shareToken}`;
           setShareUrl(url);
+          queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
         },
         onError: () => toast({ title: "שגיאה ביצירת קישור שיתוף", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleRevokeLink = () => {
+    revokeShareToken.mutate(
+      { id: quoteId },
+      {
+        onSuccess: () => {
+          setShareUrl(null);
+          queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
+          toast({ title: "הקישור בוטל — הלקוח לא יוכל לגשת אליו יותר" });
+        },
+        onError: () => toast({ title: "שגיאה בביטול הקישור", variant: "destructive" }),
       }
     );
   };
@@ -313,16 +336,29 @@ export default function QuoteDetail() {
             <p className="text-xs font-semibold text-blue-700 mb-1">קישור לשיתוף עם הלקוח</p>
             <p className="text-sm font-mono text-blue-900 break-all">{shareUrl}</p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleCopyLink}
-            className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-100 shrink-0"
-            data-testid="button-copy-share-link"
-          >
-            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            {copied ? "הועתק!" : "העתק קישור"}
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCopyLink}
+              className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-100"
+              data-testid="button-copy-share-link"
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? "הועתק!" : "העתק קישור"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRevokeLink}
+              disabled={revokeShareToken.isPending}
+              className="gap-1.5 border-red-300 text-red-600 hover:bg-red-50"
+              data-testid="button-revoke-share-link"
+            >
+              <Link2Off className="w-4 h-4" />
+              בטל קישור
+            </Button>
+          </div>
         </div>
       )}
 
