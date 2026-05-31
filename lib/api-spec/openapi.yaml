@@ -364,6 +364,21 @@ paths:
                 $ref: "#/components/schemas/QuoteShareToken"
         "404":
           description: Not found
+    delete:
+      operationId: revokeQuoteShareToken
+      tags: [quotes]
+      summary: Revoke the shareable link for a quote (clears the share token)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Share token revoked
+        "404":
+          description: Not found
 
   /quotes/public/{token}:
     get:
@@ -400,6 +415,35 @@ paths:
       responses:
         "200":
           description: Approved quote detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteDetail"
+        "404":
+          description: Not found
+        "409":
+          description: Quote already cancelled
+
+  /quotes/public/{token}/request-changes:
+    post:
+      operationId: requestChangesPublicQuote
+      tags: [quotes]
+      summary: Request changes on a quote via its public share token
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteChangeRequest"
+      responses:
+        "200":
+          description: Updated quote detail
           content:
             application/json:
               schema:
@@ -586,8 +630,10 @@ components:
           type: integer
         status:
           type: string
-          enum: [pending, approved, cancelled]
+          enum: [pending, approved, cancelled, changes_requested]
         notes:
+          type: ["string", "null"]
+        customerNote:
           type: ["string", "null"]
         shareToken:
           type: ["string", "null"]
@@ -619,8 +665,10 @@ components:
           type: number
         status:
           type: string
-          enum: [pending, approved, cancelled]
+          enum: [pending, approved, cancelled, changes_requested]
         notes:
+          type: ["string", "null"]
+        customerNote:
           type: ["string", "null"]
         shareToken:
           type: ["string", "null"]
@@ -672,6 +720,14 @@ components:
         status:
           type: string
           enum: [pending, approved, cancelled]
+
+    QuoteChangeRequest:
+      type: object
+      required: [note]
+      properties:
+        note:
+          type: string
+          minLength: 1
 
     QuotesSummary:
       type: object

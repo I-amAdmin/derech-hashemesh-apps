@@ -13,4 +13,5 @@ export const QuoteStatus = {
   pending: 'pending',
   approved: 'approved',
   cancelled: 'cancelled',
+  changes_requested: 'changes_requested',
 } as const;

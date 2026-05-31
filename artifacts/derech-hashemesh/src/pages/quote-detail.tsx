@@ -1,14 +1,14 @@
 import { Layout } from "@/components/layout";
 import { useParams, Link } from "wouter";
-import { useGetQuote, useUpdateQuoteStatus, useGenerateQuoteShareToken, getGetQuoteQueryKey, getListQuotesQueryKey, getGetQuotesSummaryQueryKey } from "@workspace/api-client-react";
+import { useGetQuote, useUpdateQuoteStatus, useGenerateQuoteShareToken, useRevokeQuoteShareToken, getGetQuoteQueryKey, getListQuotesQueryKey, getGetQuotesSummaryQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check, Eye } from "lucide-react";
+import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check, Eye, MessageSquareDiff, Link2Off } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
-import * as XLSX from "xlsx";
+import { useState, useEffect } from "react";
+import ExcelJS from "exceljs";
 
 const ORDER_PHONE = "054-8070533";
 
@@ -16,18 +16,21 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "ממתינה",
   approved: "אושרה",
   cancelled: "בוטלה",
+  changes_requested: "התבקשו שינויים",
 };
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-300",
   approved: "bg-green-100 text-green-800 border-green-300",
   cancelled: "bg-red-100 text-red-800 border-red-300",
+  changes_requested: "bg-orange-100 text-orange-800 border-orange-300",
 };
 
 const STATUS_ICONS: Record<string, React.ReactNode> = {
   pending: <Clock className="w-4 h-4" />,
   approved: <CheckCircle2 className="w-4 h-4" />,
   cancelled: <XCircle className="w-4 h-4" />,
+  changes_requested: <MessageSquareDiff className="w-4 h-4" />,
 };
 
 export default function QuoteDetail() {
@@ -41,8 +44,16 @@ export default function QuoteDetail() {
   const { data: quote, isLoading } = useGetQuote(quoteId, {
     query: { enabled: !!quoteId, queryKey: getGetQuoteQueryKey(quoteId) },
   });
+
+  useEffect(() => {
+    if (quote?.shareToken && !shareUrl) {
+      setShareUrl(`${window.location.origin}${import.meta.env.BASE_URL}q/${quote.shareToken}`);
+    }
+  }, [quote?.shareToken]);
+
   const updateStatus = useUpdateQuoteStatus();
   const generateShareToken = useGenerateQuoteShareToken();
+  const revokeShareToken = useRevokeQuoteShareToken();
 
   const handleShare = () => {
     generateShareToken.mutate(
@@ -51,8 +62,23 @@ export default function QuoteDetail() {
         onSuccess: (data) => {
           const url = `${window.location.origin}${import.meta.env.BASE_URL}q/${data.shareToken}`;
           setShareUrl(url);
+          queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
         },
         onError: () => toast({ title: "שגיאה ביצירת קישור שיתוף", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleRevokeLink = () => {
+    revokeShareToken.mutate(
+      { id: quoteId },
+      {
+        onSuccess: () => {
+          setShareUrl(null);
+          queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
+          toast({ title: "הקישור בוטל — הלקוח לא יוכל לגשת אליו יותר" });
+        },
+        onError: () => toast({ title: "שגיאה בביטול הקישור", variant: "destructive" }),
       }
     );
   };
@@ -133,10 +159,16 @@ export default function QuoteDetail() {
     window.open(mailto, "_blank");
   };
 
-  const handleExcelExport = () => {
+  const handleExcelExport = async () => {
     if (!quote) return;
-    const wb = XLSX.utils.book_new();
-    const headerRows = [
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet("הצעת מחיר");
+
+    ws.columns = [
+      { width: 14 }, { width: 30 }, { width: 18 }, { width: 14 }, { width: 8 }, { width: 20 }, { width: 18 },
+    ];
+
+    const headerRows: (string | number)[][] = [
       ["הצעת מחיר", `#${quote.id}`],
       ["תאריך", quote.date],
       ["לכבוד", quote.customerName],
@@ -158,18 +190,20 @@ export default function QuoteDetail() {
       item.totalPrice,
     ]);
 
-    const totalRow: (string | number)[] = [];
-    totalRow.push("", "", "", "", "", "סה\"כ לתשלום:", quote.totalAmount);
+    const totalRow: (string | number)[] = ["", "", "", "", "", "סה\"כ לתשלום:", quote.totalAmount];
 
-    const allRows = [...headerRows, ...itemRows, [], totalRow];
-    const ws = XLSX.utils.aoa_to_sheet(allRows);
+    ws.addRows([...headerRows, ...itemRows, [], totalRow]);
 
-    ws["!cols"] = [
-      { wch: 14 }, { wch: 30 }, { wch: 18 }, { wch: 14 }, { wch: 8 }, { wch: 20 }, { wch: 18 },
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, "הצעת מחיר");
-    XLSX.writeFile(wb, `הצעת-מחיר-${quote.id}-${quote.customerName}.xlsx`);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `הצעת-מחיר-${quote.id}-${quote.customerName}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
     toast({ title: "קובץ האקסל הורד בהצלחה" });
   };
 
@@ -280,6 +314,17 @@ export default function QuoteDetail() {
         </div>
       </div>
 
+      {/* Customer note (changes requested) */}
+      {quote.customerNote && (
+        <div className="mb-4 print:hidden bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-start gap-2 text-sm text-orange-900" data-testid="badge-customer-note">
+          <MessageSquareDiff className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-semibold">הלקוח ביקש שינויים: </span>
+            <span className="whitespace-pre-wrap">{quote.customerNote}</span>
+          </div>
+        </div>
+      )}
+
       {/* Viewed indicator */}
       {quote.viewedAt && (
         <div className="mb-4 print:hidden bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-emerald-800" data-testid="badge-viewed-at">
@@ -299,16 +344,29 @@ export default function QuoteDetail() {
             <p className="text-xs font-semibold text-blue-700 mb-1">קישור לשיתוף עם הלקוח</p>
             <p className="text-sm font-mono text-blue-900 break-all">{shareUrl}</p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleCopyLink}
-            className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-100 shrink-0"
-            data-testid="button-copy-share-link"
-          >
-            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            {copied ? "הועתק!" : "העתק קישור"}
-          </Button>
+          <div className="flex gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleCopyLink}
+              className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-100"
+              data-testid="button-copy-share-link"
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? "הועתק!" : "העתק קישור"}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRevokeLink}
+              disabled={revokeShareToken.isPending}
+              className="gap-1.5 border-red-300 text-red-600 hover:bg-red-50"
+              data-testid="button-revoke-share-link"
+            >
+              <Link2Off className="w-4 h-4" />
+              בטל קישור
+            </Button>
+          </div>
         </div>
       )}
 

@@ -14,6 +14,7 @@ export * from './productInput';
 export * from './productStats';
 export * from './productUpdate';
 export * from './quote';
+export * from './quoteChangeRequest';
 export * from './quoteDetail';
 export * from './quoteDetailStatus';
 export * from './quoteInput';

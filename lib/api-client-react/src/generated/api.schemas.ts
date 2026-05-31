@@ -105,6 +105,7 @@ export const QuoteStatus = {
   pending: 'pending',
   approved: 'approved',
   cancelled: 'cancelled',
+  changes_requested: 'changes_requested',
 } as const;
 
 export interface Quote {
@@ -123,6 +124,8 @@ export interface Quote {
   /** @nullable */
   notes?: string | null;
   /** @nullable */
+  customerNote?: string | null;
+  /** @nullable */
   shareToken?: string | null;
   /** @nullable */
   viewedAt?: string | null;
@@ -136,6 +139,7 @@ export const QuoteDetailStatus = {
   pending: 'pending',
   approved: 'approved',
   cancelled: 'cancelled',
+  changes_requested: 'changes_requested',
 } as const;
 
 export interface QuoteDetail {
@@ -152,6 +156,8 @@ export interface QuoteDetail {
   status: QuoteDetailStatus;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  customerNote?: string | null;
   /** @nullable */
   shareToken?: string | null;
   /** @nullable */
@@ -186,6 +192,11 @@ export const QuoteStatusUpdateStatus = {
 
 export interface QuoteStatusUpdate {
   status: QuoteStatusUpdateStatus;
+}
+
+export interface QuoteChangeRequest {
+  /** @minLength 1 */
+  note: string;
 }
 
 export interface QuotesSummary {
