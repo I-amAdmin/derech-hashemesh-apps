@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ArrowRight, Printer, Phone, Download, MessageCircle, Mail, Pencil, FileSpreadsheet, CheckCircle2, XCircle, Clock, Share2, Copy, Check, Eye, MessageSquareDiff, Link2Off } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 const ORDER_PHONE = "054-8070533";
 
@@ -159,10 +159,16 @@ export default function QuoteDetail() {
     window.open(mailto, "_blank");
   };
 
-  const handleExcelExport = () => {
+  const handleExcelExport = async () => {
     if (!quote) return;
-    const wb = XLSX.utils.book_new();
-    const headerRows = [
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet("הצעת מחיר");
+
+    ws.columns = [
+      { width: 14 }, { width: 30 }, { width: 18 }, { width: 14 }, { width: 8 }, { width: 20 }, { width: 18 },
+    ];
+
+    const headerRows: (string | number)[][] = [
       ["הצעת מחיר", `#${quote.id}`],
       ["תאריך", quote.date],
       ["לכבוד", quote.customerName],
@@ -184,18 +190,20 @@ export default function QuoteDetail() {
       item.totalPrice,
     ]);
 
-    const totalRow: (string | number)[] = [];
-    totalRow.push("", "", "", "", "", "סה\"כ לתשלום:", quote.totalAmount);
+    const totalRow: (string | number)[] = ["", "", "", "", "", "סה\"כ לתשלום:", quote.totalAmount];
 
-    const allRows = [...headerRows, ...itemRows, [], totalRow];
-    const ws = XLSX.utils.aoa_to_sheet(allRows);
+    ws.addRows([...headerRows, ...itemRows, [], totalRow]);
 
-    ws["!cols"] = [
-      { wch: 14 }, { wch: 30 }, { wch: 18 }, { wch: 14 }, { wch: 8 }, { wch: 20 }, { wch: 18 },
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, "הצעת מחיר");
-    XLSX.writeFile(wb, `הצעת-מחיר-${quote.id}-${quote.customerName}.xlsx`);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `הצעת-מחיר-${quote.id}-${quote.customerName}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
     toast({ title: "קובץ האקסל הורד בהצלחה" });
   };
 
