@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm --filter @workspace/derech-hashemesh... build",
+  "installCommand": "pnpm install --frozen-lockfile=false",
+  "outputDirectory": "artifacts/derech-hashemesh/dist/public",
+  "framework": null
+}
