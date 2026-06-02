@@ -2,9 +2,12 @@ import {
   useGetQuote,
   useUpdateQuoteStatus,
   useGenerateQuoteShareToken,
+  useRevokeQuoteShareToken,
+  getGetQuoteQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import React, { useState } from "react";
 import {
@@ -29,11 +32,18 @@ function StatusBadge({ status }: { status: string }) {
     pending: { bg: colors.pendingBg, text: colors.pending },
     approved: { bg: colors.approvedBg, text: colors.approved },
     cancelled: { bg: colors.cancelledBg, text: colors.cancelled },
+    changes_requested: { bg: colors.pendingBg, text: colors.pending },
   };
   const s = map[status] ?? { bg: colors.muted, text: colors.mutedForeground };
+  const label: Record<string, string> = {
+    pending: "ממתין",
+    approved: "מאושר",
+    cancelled: "בוטל",
+    changes_requested: "בקשת שינויים",
+  };
   return (
     <View style={[styles.badge, { backgroundColor: s.bg }]}>
-      <Text style={[styles.badgeText, { color: s.text }]}>{status}</Text>
+      <Text style={[styles.badgeText, { color: s.text }]}>{label[status] ?? status}</Text>
     </View>
   );
 }
@@ -49,21 +59,36 @@ export default function QuoteDetailScreen() {
 
   const quoteId = Number(id);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
-  const [sharing, setSharing] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState(false);
+  const [showSharePanel, setShowSharePanel] = useState(false);
 
   const { data: quote, isLoading, isError, refetch } = useGetQuote(quoteId);
 
   const { mutate: updateStatus } = useUpdateQuoteStatus();
-  const { mutate: getShareToken } = useGenerateQuoteShareToken();
+  const { mutate: generateToken } = useGenerateQuoteShareToken();
+  const { mutate: revokeToken } = useRevokeQuoteShareToken();
+
+  const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "dshemesh.replit.app";
+  const shareUrl = quote?.shareToken
+    ? `https://${domain}/q/${quote.shareToken}`
+    : null;
+
+  function invalidateQuote() {
+    queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
+    queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/quotes/summary"] });
+  }
 
   function handleStatusChange(newStatus: "approved" | "cancelled" | "pending") {
     Alert.alert(
-      `Mark as ${newStatus}?`,
-      `Change quote status to ${newStatus}?`,
+      "שינוי סטטוס",
+      `לשנות את סטטוס ההצעה ל-${newStatus}?`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "ביטול", style: "cancel" },
         {
-          text: "Confirm",
+          text: "אישור",
           style: newStatus === "cancelled" ? "destructive" : "default",
           onPress: () => {
             setUpdatingStatus(newStatus);
@@ -72,13 +97,11 @@ export default function QuoteDetailScreen() {
               {
                 onSuccess: () => {
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                  queryClient.invalidateQueries({ queryKey: [`/api/quotes/${quoteId}`] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
-                  queryClient.invalidateQueries({ queryKey: ["/api/quotes/summary"] });
+                  invalidateQuote();
                 },
                 onError: () => {
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                  Alert.alert("Error", "Could not update status.");
+                  Alert.alert("שגיאה", "לא ניתן היה לעדכן את הסטטוס.");
                 },
                 onSettled: () => setUpdatingStatus(null),
               }
@@ -89,19 +112,71 @@ export default function QuoteDetailScreen() {
     );
   }
 
-  function handleShare() {
-    setSharing(true);
-    getShareToken(
+  function handleGenerateOrShowShare() {
+    if (shareUrl) {
+      setShowSharePanel((v) => !v);
+      return;
+    }
+    setGenerating(true);
+    generateToken(
       { id: quoteId },
       {
-        onSuccess: (result: { shareToken: string }) => {
-          const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "localhost";
-          const url = `https://${domain}/q/${result.shareToken}`;
-          Share.share({ message: `Quote from דרך השמש: ${url}`, url });
+        onSuccess: () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          invalidateQuote();
+          setShowSharePanel(true);
         },
-        onError: () => Alert.alert("Error", "Could not generate share link."),
-        onSettled: () => setSharing(false),
+        onError: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          Alert.alert("שגיאה", "לא ניתן ליצור קישור שיתוף.");
+        },
+        onSettled: () => setGenerating(false),
       }
+    );
+  }
+
+  async function handleCopy() {
+    if (!shareUrl) return;
+    await Clipboard.setStringAsync(shareUrl);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCopyFeedback(true);
+    setTimeout(() => setCopyFeedback(false), 2000);
+  }
+
+  function handleNativeShare() {
+    if (!shareUrl) return;
+    Share.share({ message: `הצעת מחיר מדרך השמש: ${shareUrl}`, url: shareUrl });
+  }
+
+  function handleRevoke() {
+    Alert.alert(
+      "ביטול קישור שיתוף",
+      "הקישור הנוכחי יפסיק לעבוד. לא ניתן לבטל פעולה זו.",
+      [
+        { text: "ביטול", style: "cancel" },
+        {
+          text: "בטל קישור",
+          style: "destructive",
+          onPress: () => {
+            setRevoking(true);
+            revokeToken(
+              { id: quoteId },
+              {
+                onSuccess: () => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  invalidateQuote();
+                  setShowSharePanel(false);
+                },
+                onError: () => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                  Alert.alert("שגיאה", "לא ניתן לבטל את הקישור.");
+                },
+                onSettled: () => setRevoking(false),
+              }
+            );
+          },
+        },
+      ]
     );
   }
 
@@ -117,18 +192,18 @@ export default function QuoteDetailScreen() {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <Feather name="alert-circle" size={40} color={colors.mutedForeground} />
-        <Text style={[styles.errorTitle, { color: colors.foreground }]}>Quote not found</Text>
+        <Text style={[styles.errorTitle, { color: colors.foreground }]}>הצעה לא נמצאה</Text>
         <Pressable onPress={() => refetch()} style={[styles.retryBtn, { backgroundColor: colors.primary }]}>
-          <Text style={{ color: colors.primaryForeground, fontWeight: "600" }}>Retry</Text>
+          <Text style={{ color: colors.primaryForeground, fontWeight: "600" }}>נסה שוב</Text>
         </Pressable>
         <Pressable onPress={() => router.back()} style={{ marginTop: 12 }}>
-          <Text style={{ color: colors.mutedForeground }}>Go back</Text>
+          <Text style={{ color: colors.mutedForeground }}>חזרה</Text>
         </Pressable>
       </View>
     );
   }
 
-  const quoteDate = new Date(quote.date).toLocaleDateString("en-IL", {
+  const quoteDate = new Date(quote.date).toLocaleDateString("he-IL", {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -140,6 +215,7 @@ export default function QuoteDetailScreen() {
         contentContainerStyle={{ paddingTop: topPad + 8, paddingBottom: bottomPad + 24, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Header row */}
         <View style={styles.headerRow}>
           <Pressable
             onPress={() => router.back()}
@@ -150,23 +226,34 @@ export default function QuoteDetailScreen() {
           </Pressable>
           <View style={styles.headerActions}>
             <Pressable
-              style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1, backgroundColor: colors.muted }]}
-              onPress={handleShare}
-              disabled={sharing}
+              style={({ pressed }) => [
+                styles.iconBtn,
+                {
+                  opacity: pressed ? 0.6 : 1,
+                  backgroundColor: showSharePanel ? colors.primary : colors.muted,
+                },
+              ]}
+              onPress={handleGenerateOrShowShare}
+              disabled={generating}
               testID="share-btn"
             >
-              {sharing ? (
-                <ActivityIndicator size="small" color={colors.primary} />
+              {generating ? (
+                <ActivityIndicator size="small" color={showSharePanel ? colors.primaryForeground : colors.primary} />
               ) : (
-                <Feather name="share-2" size={18} color={colors.foreground} />
+                <Feather
+                  name="share-2"
+                  size={18}
+                  color={showSharePanel ? colors.primaryForeground : colors.foreground}
+                />
               )}
             </Pressable>
           </View>
         </View>
 
+        {/* Hero card */}
         <View style={[styles.heroCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={styles.heroTop}>
-            <Text style={[styles.quoteNumber, { color: colors.mutedForeground }]}>Quote #{quote.id}</Text>
+            <Text style={[styles.quoteNumber, { color: colors.mutedForeground }]}>הצעה #{quote.id}</Text>
             <StatusBadge status={quote.status} />
           </View>
           <Text style={[styles.customerName, { color: colors.foreground }]}>{quote.customerName}</Text>
@@ -179,13 +266,13 @@ export default function QuoteDetailScreen() {
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.metaRow}>
             <View>
-              <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Date</Text>
+              <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>תאריך</Text>
               <Text style={[styles.metaValue, { color: colors.foreground }]}>{quoteDate}</Text>
             </View>
             <View style={{ alignItems: "flex-end" }}>
-              <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Total</Text>
+              <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>סה"כ</Text>
               <Text style={[styles.totalAmount, { color: colors.primary }]}>
-                ₪{Number(quote.totalAmount).toLocaleString("en-IL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                ₪{Number(quote.totalAmount).toLocaleString("he-IL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </Text>
             </View>
           </View>
@@ -196,8 +283,107 @@ export default function QuoteDetailScreen() {
           ) : null}
         </View>
 
+        {/* Share link panel */}
+        {showSharePanel && shareUrl ? (
+          <View
+            style={[styles.sharePanel, { backgroundColor: colors.card, borderColor: colors.primary }]}
+            testID="share-panel"
+          >
+            <View style={styles.sharePanelHeader}>
+              <Feather name="link" size={15} color={colors.primary} />
+              <Text style={[styles.sharePanelTitle, { color: colors.primary }]}>קישור שיתוף ללקוח</Text>
+            </View>
+
+            {/* URL display */}
+            <View style={[styles.urlBox, { backgroundColor: colors.muted }]}>
+              <Text
+                style={[styles.urlText, { color: colors.mutedForeground }]}
+                numberOfLines={1}
+                ellipsizeMode="middle"
+              >
+                {shareUrl}
+              </Text>
+            </View>
+
+            {/* Action buttons */}
+            <View style={styles.sharePanelActions}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.shareActionBtn,
+                  { backgroundColor: copyFeedback ? colors.approvedBg : colors.muted, opacity: pressed ? 0.7 : 1 },
+                ]}
+                onPress={handleCopy}
+                testID="copy-link-btn"
+              >
+                <Feather
+                  name={copyFeedback ? "check" : "copy"}
+                  size={15}
+                  color={copyFeedback ? colors.approved : colors.foreground}
+                />
+                <Text style={[styles.shareActionText, { color: copyFeedback ? colors.approved : colors.foreground }]}>
+                  {copyFeedback ? "הועתק!" : "העתק"}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.shareActionBtn,
+                  { backgroundColor: colors.muted, opacity: pressed ? 0.7 : 1 },
+                ]}
+                onPress={handleNativeShare}
+                testID="native-share-btn"
+              >
+                <Feather name="share" size={15} color={colors.foreground} />
+                <Text style={[styles.shareActionText, { color: colors.foreground }]}>שתף</Text>
+              </Pressable>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.shareActionBtn,
+                  { backgroundColor: colors.cancelledBg, opacity: pressed ? 0.7 : 1 },
+                ]}
+                onPress={handleRevoke}
+                disabled={revoking}
+                testID="revoke-link-btn"
+              >
+                {revoking ? (
+                  <ActivityIndicator size="small" color={colors.cancelled} />
+                ) : (
+                  <>
+                    <Feather name="trash-2" size={15} color={colors.cancelled} />
+                    <Text style={[styles.shareActionText, { color: colors.cancelled }]}>בטל קישור</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {/* "Generate share link" nudge when no token */}
+        {!shareUrl && !showSharePanel ? (
+          <Pressable
+            style={({ pressed }) => [
+              styles.generateShareBtn,
+              { backgroundColor: colors.muted, borderColor: colors.border, opacity: pressed ? 0.7 : 1 },
+            ]}
+            onPress={handleGenerateOrShowShare}
+            disabled={generating}
+            testID="generate-share-btn"
+          >
+            {generating ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Feather name="link" size={16} color={colors.primary} />
+            )}
+            <Text style={[styles.generateShareText, { color: colors.primary }]}>
+              {generating ? "יוצר קישור..." : "צור קישור שיתוף ללקוח"}
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {/* Items */}
         <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-          Items ({quote.items.length})
+          פריטים ({quote.items.length})
         </Text>
 
         {quote.items.map((item, idx) => (
@@ -215,18 +401,19 @@ export default function QuoteDetailScreen() {
                 {item.description}
               </Text>
               <Text style={[styles.itemMeta, { color: colors.mutedForeground }]}>
-                {item.weightKg}kg · ₪{item.pricePerKg}/kg · qty {item.quantity}
+                {item.weightKg}ק"ג · ₪{item.pricePerKg}/ק"ג · כמות {item.quantity}
               </Text>
             </View>
             <Text style={[styles.itemTotal, { color: colors.primary }]}>
-              ₪{Number(item.totalPrice).toLocaleString("en-IL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ₪{Number(item.totalPrice).toLocaleString("he-IL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Text>
           </View>
         ))}
 
+        {/* Status actions */}
         {quote.status === "pending" && (
           <View style={styles.actionsSection}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Actions</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>פעולות</Text>
             <View style={styles.actionsRow}>
               <Pressable
                 style={({ pressed }) => [
@@ -242,7 +429,7 @@ export default function QuoteDetailScreen() {
                 ) : (
                   <>
                     <Feather name="check-circle" size={18} color={colors.approved} />
-                    <Text style={[styles.actionBtnText, { color: colors.approved }]}>Approve</Text>
+                    <Text style={[styles.actionBtnText, { color: colors.approved }]}>אשר</Text>
                   </>
                 )}
               </Pressable>
@@ -260,7 +447,7 @@ export default function QuoteDetailScreen() {
                 ) : (
                   <>
                     <Feather name="x-circle" size={18} color={colors.cancelled} />
-                    <Text style={[styles.actionBtnText, { color: colors.cancelled }]}>Cancel</Text>
+                    <Text style={[styles.actionBtnText, { color: colors.cancelled }]}>בטל</Text>
                   </>
                 )}
               </Pressable>
@@ -280,7 +467,7 @@ export default function QuoteDetailScreen() {
               disabled={!!updatingStatus}
             >
               <Feather name="clock" size={18} color={colors.pending} />
-              <Text style={[styles.actionBtnText, { color: colors.pending }]}>Revert to Pending</Text>
+              <Text style={[styles.actionBtnText, { color: colors.pending }]}>החזר לממתין</Text>
             </Pressable>
           </View>
         )}
@@ -298,7 +485,7 @@ const styles = StyleSheet.create({
   backBtn: { padding: 4 },
   headerActions: { flexDirection: "row", gap: 8 },
   iconBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-  heroCard: { borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 20 },
+  heroCard: { borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 16 },
   heroTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   quoteNumber: { fontSize: 13, fontWeight: "500" },
   customerName: { fontSize: 22, fontWeight: "800", marginBottom: 4 },
@@ -310,6 +497,40 @@ const styles = StyleSheet.create({
   totalAmount: { fontSize: 24, fontWeight: "800" },
   notesBox: { borderRadius: 8, padding: 12, marginTop: 14 },
   notesText: { fontSize: 14 },
+  sharePanel: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 16,
+    marginBottom: 16,
+    gap: 12,
+  },
+  sharePanelHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  sharePanelTitle: { fontSize: 14, fontWeight: "700" },
+  urlBox: { borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10 },
+  urlText: { fontSize: 12, fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" },
+  sharePanelActions: { flexDirection: "row", gap: 8 },
+  shareActionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    borderRadius: 8,
+    paddingVertical: 9,
+  },
+  shareActionText: { fontSize: 12, fontWeight: "600" },
+  generateShareBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  generateShareText: { fontSize: 14, fontWeight: "600" },
   sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: 10 },
   itemRow: {
     flexDirection: "row",
@@ -326,7 +547,7 @@ const styles = StyleSheet.create({
   itemMeta: { fontSize: 12 },
   itemTotal: { fontSize: 14, fontWeight: "700" },
   badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { fontSize: 11, fontWeight: "600", textTransform: "capitalize" },
+  badgeText: { fontSize: 11, fontWeight: "600" },
   actionsSection: { marginBottom: 12 },
   actionsRow: { flexDirection: "row", gap: 10 },
   actionBtn: {
