@@ -1,6 +1,0 @@
-{
-  "buildCommand": "cd ../.. && pnpm install && pnpm --filter ./artifacts/derech-hashemesh build",
-  "outputDirectory": "dist",
-  "installCommand": "echo skip",
-  "framework": "vite"
-}
