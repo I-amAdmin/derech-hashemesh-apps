@@ -61,6 +61,8 @@ export default function QuoteEdit() {
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
   const [pendingSelection, setPendingSelection] = useState<Set<number>>(new Set());
+  const [selectorPage, setSelectorPage] = useState(0);
+  const PAGE_SIZE = 50;
   const [formReady, setFormReady] = useState(false);
 
   const form = useForm<QuoteFormValues>({
@@ -121,6 +123,13 @@ export default function QuoteEdit() {
       return matchesSearch && matchesDept;
     });
   }, [products, productSearch, selectedDept]);
+
+  useEffect(() => { setSelectorPage(0); }, [productSearch, selectedDept]);
+
+  const pagedProducts = useMemo(
+    () => filteredProducts.slice(selectorPage * PAGE_SIZE, (selectorPage + 1) * PAGE_SIZE),
+    [filteredProducts, selectorPage]
+  );
 
   const togglePending = (id: number) => {
     setPendingSelection((prev) => {
@@ -443,7 +452,7 @@ export default function QuoteEdit() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredProducts.map((p) => {
+                    {pagedProducts.map((p) => {
                       const alreadyAdded = items.some((item) => item.productId === p.id);
                       const isChecked = pendingSelection.has(p.id);
                       return (
@@ -480,11 +489,22 @@ export default function QuoteEdit() {
             </div>
           </div>
 
-          <div className="border-t px-6 py-4 flex items-center justify-between gap-3 bg-muted/30">
-            <span className="text-sm text-muted-foreground">
-              {pendingSelection.size > 0 ? `${pendingSelection.size} מוצרים נבחרו` : "סמן מוצרים להוספה"}
-            </span>
-            <div className="flex gap-2">
+          <div className="border-t px-6 py-3 flex items-center justify-between gap-3 bg-muted/30 flex-wrap">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                {filteredProducts.length > 0
+                  ? `${selectorPage * PAGE_SIZE + 1}–${Math.min((selectorPage + 1) * PAGE_SIZE, filteredProducts.length)} מתוך ${filteredProducts.length}`
+                  : "0 מוצרים"}
+              </span>
+              {filteredProducts.length > PAGE_SIZE && (
+                <div className="flex gap-1">
+                  <Button variant="outline" size="sm" type="button" disabled={selectorPage === 0} onClick={() => setSelectorPage((p) => p - 1)}>→</Button>
+                  <Button variant="outline" size="sm" type="button" disabled={(selectorPage + 1) * PAGE_SIZE >= filteredProducts.length} onClick={() => setSelectorPage((p) => p + 1)}>←</Button>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 items-center">
+              <span className="text-sm text-muted-foreground">{pendingSelection.size > 0 ? `${pendingSelection.size} נבחרו` : ""}</span>
               <Button variant="outline" type="button" onClick={closeSelectorDialog}>ביטול</Button>
               <Button
                 type="button"
