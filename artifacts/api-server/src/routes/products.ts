@@ -12,15 +12,19 @@ import {
 
 const router = Router();
 
+function serializeProduct(p: typeof productsTable.$inferSelect) {
+  return {
+    ...p,
+    weightKg: Number(p.weightKg),
+    pricePerKg: Number(p.pricePerKg),
+    priceBeforeVat: p.priceBeforeVat != null ? Number(p.priceBeforeVat) : null,
+    priceAfterVat: p.priceAfterVat != null ? Number(p.priceAfterVat) : null,
+  };
+}
+
 router.get("/products", async (req, res) => {
   const products = await db.select().from(productsTable).orderBy(productsTable.department, productsTable.description);
-  res.json(
-    products.map((p) => ({
-      ...p,
-      weightKg: Number(p.weightKg),
-      pricePerKg: Number(p.pricePerKg),
-    }))
-  );
+  res.json(products.map(serializeProduct));
 });
 
 router.get("/products/stats", async (req, res) => {
@@ -50,7 +54,7 @@ router.get("/products/:id", async (req, res) => {
     res.status(404).json({ error: "Product not found" });
     return;
   }
-  res.json({ ...product, weightKg: Number(product.weightKg), pricePerKg: Number(product.pricePerKg) });
+  res.json(serializeProduct(product));
 });
 
 router.post("/products", async (req, res) => {
@@ -59,15 +63,23 @@ router.post("/products", async (req, res) => {
     res.status(400).json({ error: body.error.message });
     return;
   }
+  const d = body.data;
   const [created] = await db.insert(productsTable).values({
-    barcode: body.data.barcode,
-    description: body.data.description,
-    weightKg: String(body.data.weightKg),
-    pricePerKg: String(body.data.pricePerKg),
-    department: body.data.department ?? "כללי",
-    notes: body.data.notes ?? null,
+    barcode: d.barcode,
+    description: d.description,
+    weightKg: String(d.weightKg),
+    pricePerKg: String(d.pricePerKg),
+    department: d.department ?? "כללי",
+    notes: d.notes ?? null,
+    priceBeforeVat: d.priceBeforeVat != null ? String(d.priceBeforeVat) : null,
+    priceAfterVat: d.priceAfterVat != null ? String(d.priceAfterVat) : null,
+    sizeSmall: d.sizeSmall ?? null,
+    sizeMedium: d.sizeMedium ?? null,
+    sizeLarge: d.sizeLarge ?? null,
+    weightOrAmount: d.weightOrAmount ?? null,
+    productNotes: d.productNotes ?? null,
   }).returning();
-  res.status(201).json({ ...created, weightKg: Number(created.weightKg), pricePerKg: Number(created.pricePerKg) });
+  res.status(201).json(serializeProduct(created));
 });
 
 router.put("/products/:id", async (req, res) => {
@@ -82,13 +94,21 @@ router.put("/products/:id", async (req, res) => {
     return;
   }
 
+  const d = body.data;
   const updates: Record<string, unknown> = {};
-  if (body.data.barcode !== undefined) updates.barcode = body.data.barcode;
-  if (body.data.description !== undefined) updates.description = body.data.description;
-  if (body.data.weightKg !== undefined) updates.weightKg = String(body.data.weightKg);
-  if (body.data.pricePerKg !== undefined) updates.pricePerKg = String(body.data.pricePerKg);
-  if (body.data.department !== undefined) updates.department = body.data.department;
-  if (body.data.notes !== undefined) updates.notes = body.data.notes;
+  if (d.barcode !== undefined) updates.barcode = d.barcode;
+  if (d.description !== undefined) updates.description = d.description;
+  if (d.weightKg !== undefined) updates.weightKg = String(d.weightKg);
+  if (d.pricePerKg !== undefined) updates.pricePerKg = String(d.pricePerKg);
+  if (d.department !== undefined) updates.department = d.department;
+  if (d.notes !== undefined) updates.notes = d.notes;
+  if (d.priceBeforeVat !== undefined) updates.priceBeforeVat = d.priceBeforeVat != null ? String(d.priceBeforeVat) : null;
+  if (d.priceAfterVat !== undefined) updates.priceAfterVat = d.priceAfterVat != null ? String(d.priceAfterVat) : null;
+  if (d.sizeSmall !== undefined) updates.sizeSmall = d.sizeSmall;
+  if (d.sizeMedium !== undefined) updates.sizeMedium = d.sizeMedium;
+  if (d.sizeLarge !== undefined) updates.sizeLarge = d.sizeLarge;
+  if (d.weightOrAmount !== undefined) updates.weightOrAmount = d.weightOrAmount;
+  if (d.productNotes !== undefined) updates.productNotes = d.productNotes;
 
   const [updated] = await db
     .update(productsTable)
@@ -100,7 +120,7 @@ router.put("/products/:id", async (req, res) => {
     res.status(404).json({ error: "Product not found" });
     return;
   }
-  res.json({ ...updated, weightKg: Number(updated.weightKg), pricePerKg: Number(updated.pricePerKg) });
+  res.json(serializeProduct(updated));
 });
 
 router.delete("/products/:id", async (req, res) => {

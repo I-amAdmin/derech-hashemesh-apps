@@ -17,4 +17,11 @@ export interface ProductInput {
   pricePerKg: number;
   department?: string;
   notes?: string;
+  priceBeforeVat?: number;
+  priceAfterVat?: number;
+  sizeSmall?: string;
+  sizeMedium?: string;
+  sizeLarge?: string;
+  weightOrAmount?: string;
+  productNotes?: string;
 }

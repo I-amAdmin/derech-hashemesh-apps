@@ -28,6 +28,13 @@ export const ListProductsResponseItem = zod.object({
   "pricePerKg": zod.number().describe('Price per kilogram in ILS'),
   "department": zod.string().describe('Department \/ category name'),
   "notes": zod.string().nullish(),
+  "priceBeforeVat": zod.number().nullish().describe('Price before VAT (18%)'),
+  "priceAfterVat": zod.number().nullish().describe('Price after VAT (18%)'),
+  "sizeSmall": zod.string().nullish().describe('Weight\/amount for small package size'),
+  "sizeMedium": zod.string().nullish().describe('Weight\/amount for medium package size'),
+  "sizeLarge": zod.string().nullish().describe('Weight\/amount for large package size'),
+  "weightOrAmount": zod.string().nullish().describe('Custom weight or amount field'),
+  "productNotes": zod.string().nullish().describe('Free-text product notes'),
   "createdAt": zod.coerce.date()
 })
 export const ListProductsResponse = zod.array(ListProductsResponseItem)
@@ -50,7 +57,14 @@ export const CreateProductBody = zod.object({
   "weightKg": zod.number().min(createProductBodyWeightKgMin),
   "pricePerKg": zod.number().min(createProductBodyPricePerKgMin),
   "department": zod.string().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "priceBeforeVat": zod.number().optional(),
+  "priceAfterVat": zod.number().optional(),
+  "sizeSmall": zod.string().optional(),
+  "sizeMedium": zod.string().optional(),
+  "sizeLarge": zod.string().optional(),
+  "weightOrAmount": zod.string().optional(),
+  "productNotes": zod.string().optional()
 })
 
 
@@ -79,6 +93,13 @@ export const GetProductResponse = zod.object({
   "pricePerKg": zod.number().describe('Price per kilogram in ILS'),
   "department": zod.string().describe('Department \/ category name'),
   "notes": zod.string().nullish(),
+  "priceBeforeVat": zod.number().nullish().describe('Price before VAT (18%)'),
+  "priceAfterVat": zod.number().nullish().describe('Price after VAT (18%)'),
+  "sizeSmall": zod.string().nullish().describe('Weight\/amount for small package size'),
+  "sizeMedium": zod.string().nullish().describe('Weight\/amount for medium package size'),
+  "sizeLarge": zod.string().nullish().describe('Weight\/amount for large package size'),
+  "weightOrAmount": zod.string().nullish().describe('Custom weight or amount field'),
+  "productNotes": zod.string().nullish().describe('Free-text product notes'),
   "createdAt": zod.coerce.date()
 })
 
@@ -104,7 +125,14 @@ export const UpdateProductBody = zod.object({
   "weightKg": zod.number().min(updateProductBodyWeightKgMin).optional(),
   "pricePerKg": zod.number().min(updateProductBodyPricePerKgMin).optional(),
   "department": zod.string().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "priceBeforeVat": zod.number().optional(),
+  "priceAfterVat": zod.number().optional(),
+  "sizeSmall": zod.string().optional(),
+  "sizeMedium": zod.string().optional(),
+  "sizeLarge": zod.string().optional(),
+  "weightOrAmount": zod.string().optional(),
+  "productNotes": zod.string().optional()
 })
 
 export const UpdateProductResponse = zod.object({
@@ -115,6 +143,13 @@ export const UpdateProductResponse = zod.object({
   "pricePerKg": zod.number().describe('Price per kilogram in ILS'),
   "department": zod.string().describe('Department \/ category name'),
   "notes": zod.string().nullish(),
+  "priceBeforeVat": zod.number().nullish().describe('Price before VAT (18%)'),
+  "priceAfterVat": zod.number().nullish().describe('Price after VAT (18%)'),
+  "sizeSmall": zod.string().nullish().describe('Weight\/amount for small package size'),
+  "sizeMedium": zod.string().nullish().describe('Weight\/amount for medium package size'),
+  "sizeLarge": zod.string().nullish().describe('Weight\/amount for large package size'),
+  "weightOrAmount": zod.string().nullish().describe('Custom weight or amount field'),
+  "productNotes": zod.string().nullish().describe('Free-text product notes'),
   "createdAt": zod.coerce.date()
 })
 

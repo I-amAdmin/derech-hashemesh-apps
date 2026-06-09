@@ -516,6 +516,27 @@ components:
           description: Department / category name
         notes:
           type: ["string", "null"]
+        priceBeforeVat:
+          type: ["number", "null"]
+          description: Price before VAT (18%)
+        priceAfterVat:
+          type: ["number", "null"]
+          description: Price after VAT (18%)
+        sizeSmall:
+          type: ["string", "null"]
+          description: Weight/amount for small package size
+        sizeMedium:
+          type: ["string", "null"]
+          description: Weight/amount for medium package size
+        sizeLarge:
+          type: ["string", "null"]
+          description: Weight/amount for large package size
+        weightOrAmount:
+          type: ["string", "null"]
+          description: Custom weight or amount field
+        productNotes:
+          type: ["string", "null"]
+          description: Free-text product notes
         createdAt:
           type: string
           format: date-time
@@ -540,6 +561,20 @@ components:
           type: string
         notes:
           type: string
+        priceBeforeVat:
+          type: number
+        priceAfterVat:
+          type: number
+        sizeSmall:
+          type: string
+        sizeMedium:
+          type: string
+        sizeLarge:
+          type: string
+        weightOrAmount:
+          type: string
+        productNotes:
+          type: string
 
     ProductUpdate:
       type: object
@@ -559,6 +594,20 @@ components:
         department:
           type: string
         notes:
+          type: string
+        priceBeforeVat:
+          type: number
+        priceAfterVat:
+          type: number
+        sizeSmall:
+          type: string
+        sizeMedium:
+          type: string
+        sizeLarge:
+          type: string
+        weightOrAmount:
+          type: string
+        productNotes:
           type: string
 
     ProductStats:

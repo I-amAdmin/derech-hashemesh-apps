@@ -10,6 +10,13 @@ export const productsTable = pgTable("products", {
   pricePerKg: numeric("price_per_kg", { precision: 10, scale: 2 }).notNull(),
   department: text("department").notNull().default("כללי"),
   notes: text("notes"),
+  priceBeforeVat: numeric("price_before_vat", { precision: 10, scale: 2 }),
+  priceAfterVat: numeric("price_after_vat", { precision: 10, scale: 2 }),
+  sizeSmall: text("size_small"),
+  sizeMedium: text("size_medium"),
+  sizeLarge: text("size_large"),
+  weightOrAmount: text("weight_or_amount"),
+  productNotes: text("product_notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

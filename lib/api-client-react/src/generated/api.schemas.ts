@@ -41,6 +41,41 @@ export interface Product {
   department: string;
   /** @nullable */
   notes?: string | null;
+  /**
+     * Price before VAT (18%)
+     * @nullable
+     */
+  priceBeforeVat?: number | null;
+  /**
+     * Price after VAT (18%)
+     * @nullable
+     */
+  priceAfterVat?: number | null;
+  /**
+     * Weight/amount for small package size
+     * @nullable
+     */
+  sizeSmall?: string | null;
+  /**
+     * Weight/amount for medium package size
+     * @nullable
+     */
+  sizeMedium?: string | null;
+  /**
+     * Weight/amount for large package size
+     * @nullable
+     */
+  sizeLarge?: string | null;
+  /**
+     * Custom weight or amount field
+     * @nullable
+     */
+  weightOrAmount?: string | null;
+  /**
+     * Free-text product notes
+     * @nullable
+     */
+  productNotes?: string | null;
   createdAt: string;
 }
 
@@ -55,6 +90,13 @@ export interface ProductInput {
   pricePerKg: number;
   department?: string;
   notes?: string;
+  priceBeforeVat?: number;
+  priceAfterVat?: number;
+  sizeSmall?: string;
+  sizeMedium?: string;
+  sizeLarge?: string;
+  weightOrAmount?: string;
+  productNotes?: string;
 }
 
 export interface ProductUpdate {
@@ -68,6 +110,13 @@ export interface ProductUpdate {
   pricePerKg?: number;
   department?: string;
   notes?: string;
+  priceBeforeVat?: number;
+  priceAfterVat?: number;
+  sizeSmall?: string;
+  sizeMedium?: string;
+  sizeLarge?: string;
+  weightOrAmount?: string;
+  productNotes?: string;
 }
 
 export interface ProductStats {

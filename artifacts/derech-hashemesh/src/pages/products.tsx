@@ -52,13 +52,22 @@ import { Plus, Pencil, Trash2, Search, Package, ChevronDown, ChevronUp, Shopping
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
+const VAT_RATE = 0.18;
+
 const productSchema = z.object({
   barcode: z.string().min(1, "שדה חובה"),
   description: z.string().min(1, "שדה חובה"),
-  weightKg: z.coerce.number().min(0.001, "משקל חייב להיות חיובי"),
+  weightKg: z.coerce.number().min(0, "משקל חייב להיות חיובי"),
   pricePerKg: z.coerce.number().min(0, "מחיר חייב להיות חיובי"),
   department: z.string().min(1, "שדה חובה"),
   notes: z.string().optional(),
+  priceBeforeVat: z.coerce.number().min(0).optional(),
+  priceAfterVat: z.coerce.number().min(0).optional(),
+  sizeSmall: z.string().optional(),
+  sizeMedium: z.string().optional(),
+  sizeLarge: z.string().optional(),
+  weightOrAmount: z.string().optional(),
+  productNotes: z.string().optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -94,6 +103,13 @@ export default function Products() {
       pricePerKg: 0,
       department: "כללי",
       notes: "",
+      priceBeforeVat: undefined,
+      priceAfterVat: undefined,
+      sizeSmall: "",
+      sizeMedium: "",
+      sizeLarge: "",
+      weightOrAmount: "",
+      productNotes: "",
     },
   });
 
@@ -223,7 +239,13 @@ export default function Products() {
   };
 
   const handleOpenAdd = () => {
-    form.reset({ barcode: "", description: "", weightKg: 0, pricePerKg: 0, department: "כללי", notes: "" });
+    form.reset({
+      barcode: "", description: "", weightKg: 0, pricePerKg: 0,
+      department: "כללי", notes: "",
+      priceBeforeVat: undefined, priceAfterVat: undefined,
+      sizeSmall: "", sizeMedium: "", sizeLarge: "",
+      weightOrAmount: "", productNotes: "",
+    });
     setEditingProduct(null);
     setIsAddOpen(true);
   };
@@ -236,15 +258,33 @@ export default function Products() {
       pricePerKg: product.pricePerKg,
       department: product.department || "כללי",
       notes: product.notes || "",
+      priceBeforeVat: product.priceBeforeVat ?? undefined,
+      priceAfterVat: product.priceAfterVat ?? undefined,
+      sizeSmall: product.sizeSmall || "",
+      sizeMedium: product.sizeMedium || "",
+      sizeLarge: product.sizeLarge || "",
+      weightOrAmount: product.weightOrAmount || "",
+      productNotes: product.productNotes || "",
     });
     setEditingProduct(product);
     setIsAddOpen(true);
   };
 
   const onSubmit = (data: ProductFormValues) => {
+    const payload = {
+      ...data,
+      priceBeforeVat: data.priceBeforeVat ?? undefined,
+      priceAfterVat: data.priceAfterVat ?? undefined,
+      sizeSmall: data.sizeSmall || undefined,
+      sizeMedium: data.sizeMedium || undefined,
+      sizeLarge: data.sizeLarge || undefined,
+      weightOrAmount: data.weightOrAmount || undefined,
+      productNotes: data.productNotes || undefined,
+    };
+
     if (editingProduct) {
       updateProduct.mutate(
-        { id: editingProduct.id, data },
+        { id: editingProduct.id, data: payload },
         {
           onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
@@ -257,7 +297,7 @@ export default function Products() {
       );
     } else {
       createProduct.mutate(
-        { data },
+        { data: payload },
         {
           onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
@@ -379,67 +419,102 @@ export default function Products() {
                   </CollapsibleTrigger>
                 </div>
                 <CollapsibleContent>
-                  <div className="border border-t-0 rounded-b-lg overflow-hidden">
+                  <div className="border border-t-0 rounded-b-lg overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/30">
                           <TableHead className="w-[48px] text-right pr-4"></TableHead>
-                          <TableHead className="text-right w-[140px]">ברקוד</TableHead>
+                          <TableHead className="text-right w-[130px]">ברקוד</TableHead>
                           <TableHead className="text-right">תיאור פריט</TableHead>
-                          <TableHead className="text-right w-[120px]">סה"כ משקל (ק"ג)</TableHead>
-                          <TableHead className="text-right w-[130px]">מחיר לק"ג</TableHead>
-                          <TableHead className="text-right w-[130px]">מחיר ליחידה</TableHead>
-                          <TableHead className="w-[90px] text-left">פעולות</TableHead>
+                          <TableHead className="text-right w-[110px]">מחיר לפני מע"מ</TableHead>
+                          <TableHead className="text-right w-[110px]">מחיר אחרי מע"מ</TableHead>
+                          <TableHead className="text-right w-[90px]">קטן</TableHead>
+                          <TableHead className="text-right w-[90px]">בינוני</TableHead>
+                          <TableHead className="text-right w-[90px]">גדול</TableHead>
+                          <TableHead className="text-right w-[100px]">משקל/כמות</TableHead>
+                          <TableHead className="text-right w-[130px]">הערות</TableHead>
+                          <TableHead className="w-[80px] text-left">פעולות</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {deptProducts.map((product) => (
-                          <TableRow
-                            key={product.id}
-                            data-testid={`row-product-${product.id}`}
-                            className={selectedIds.has(product.id) ? "bg-primary/5" : ""}
-                          >
-                            <TableCell className="pr-4">
-                              <Checkbox
-                                checked={selectedIds.has(product.id)}
-                                onCheckedChange={() => toggleProduct(product.id)}
-                                aria-label={`בחר ${product.description}`}
-                                data-testid={`checkbox-product-${product.id}`}
-                              />
-                            </TableCell>
-                            <TableCell className="font-mono text-xs">{product.barcode}</TableCell>
-                            <TableCell className="font-medium">{product.description}</TableCell>
-                            <TableCell>{formatNumber(product.weightKg)} ק"ג</TableCell>
-                            <TableCell className="font-semibold text-primary">
-                              {formatCurrency(product.pricePerKg)}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {formatCurrency(product.pricePerKg * product.weightKg)}
-                            </TableCell>
-                            <TableCell className="text-left">
-                              <div className="flex justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => handleOpenEdit(product)}
-                                  data-testid={`button-edit-product-${product.id}`}
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={() => setDeletingId(product.id)}
-                                  data-testid={`button-delete-product-${product.id}`}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {deptProducts.map((product) => {
+                          const beforeVat = product.priceBeforeVat != null
+                            ? Number(product.priceBeforeVat)
+                            : product.priceAfterVat != null
+                              ? Number(product.priceAfterVat) / (1 + VAT_RATE)
+                              : null;
+                          const afterVat = product.priceAfterVat != null
+                            ? Number(product.priceAfterVat)
+                            : product.priceBeforeVat != null
+                              ? Number(product.priceBeforeVat) * (1 + VAT_RATE)
+                              : null;
+                          return (
+                            <TableRow
+                              key={product.id}
+                              data-testid={`row-product-${product.id}`}
+                              className={selectedIds.has(product.id) ? "bg-primary/5" : ""}
+                            >
+                              <TableCell className="pr-4">
+                                <Checkbox
+                                  checked={selectedIds.has(product.id)}
+                                  onCheckedChange={() => toggleProduct(product.id)}
+                                  aria-label={`בחר ${product.description}`}
+                                  data-testid={`checkbox-product-${product.id}`}
+                                />
+                              </TableCell>
+                              <TableCell className="font-mono text-xs">{product.barcode}</TableCell>
+                              <TableCell className="font-medium">
+                                <div>{product.description}</div>
+                                {product.notes && (
+                                  <div className="text-xs text-muted-foreground">{product.notes}</div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-sm">
+                                {beforeVat != null ? formatCurrency(beforeVat) : "—"}
+                              </TableCell>
+                              <TableCell className="font-semibold text-primary text-sm">
+                                {afterVat != null ? formatCurrency(afterVat) : "—"}
+                              </TableCell>
+                              <TableCell className="text-sm text-center">
+                                {product.sizeSmall || "—"}
+                              </TableCell>
+                              <TableCell className="text-sm text-center">
+                                {product.sizeMedium || "—"}
+                              </TableCell>
+                              <TableCell className="text-sm text-center">
+                                {product.sizeLarge || "—"}
+                              </TableCell>
+                              <TableCell className="text-sm">
+                                {product.weightOrAmount || "—"}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground max-w-[130px] truncate">
+                                {product.productNotes || "—"}
+                              </TableCell>
+                              <TableCell className="text-left">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleOpenEdit(product)}
+                                    data-testid={`button-edit-product-${product.id}`}
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => setDeletingId(product.id)}
+                                    data-testid={`button-delete-product-${product.id}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -496,7 +571,6 @@ export default function Products() {
               הוסף {selectedIds.size} מוצרים להצעה
             </DialogTitle>
           </DialogHeader>
-
           <div className="space-y-3 py-2">
             <button
               onClick={handleAddToNewQuote}
@@ -511,7 +585,6 @@ export default function Products() {
                 <p className="text-xs text-muted-foreground">צור הצעה חדשה עם המוצרים הנבחרים</p>
               </div>
             </button>
-
             {pendingQuotes.length > 0 && (
               <>
                 <div className="flex items-center gap-2 py-1">
@@ -519,7 +592,6 @@ export default function Products() {
                   <span className="text-xs text-muted-foreground">או הוסף להצעה קיימת</span>
                   <div className="h-px flex-1 bg-border" />
                 </div>
-
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {pendingQuotes.map((q) => (
                     <button
@@ -546,111 +618,155 @@ export default function Products() {
                 </div>
               </>
             )}
-
             {pendingQuotes.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-2">
                 אין הצעות ממתינות — תיצור הצעה חדשה
               </p>
             )}
           </div>
-
           <DialogFooter className="pt-2">
-            <Button variant="outline" onClick={() => setIsAddToQuoteOpen(false)}>
-              ביטול
-            </Button>
+            <Button variant="outline" onClick={() => setIsAddToQuoteOpen(false)}>ביטול</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingProduct ? "עריכת מוצר" : "מוצר חדש"}</DialogTitle>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="barcode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>ברקוד</FormLabel>
-                      <FormControl>
-                        <Input {...field} dir="ltr" className="text-left" data-testid="input-barcode" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="department"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>מחלקה</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="שם מחלקה" data-testid="input-department" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
+                <FormField control={form.control} name="barcode" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>תיאור מוצר</FormLabel>
-                    <FormControl>
-                      <Input {...field} data-testid="input-description" />
-                    </FormControl>
+                    <FormLabel>ברקוד</FormLabel>
+                    <FormControl><Input {...field} dir="ltr" className="text-left" data-testid="input-barcode" /></FormControl>
                     <FormMessage />
                   </FormItem>
-                )}
-              />
+                )} />
+                <FormField control={form.control} name="department" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>מחלקה</FormLabel>
+                    <FormControl><Input {...field} placeholder="שם מחלקה" data-testid="input-department" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+
+              <FormField control={form.control} name="description" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>תיאור מוצר</FormLabel>
+                  <FormControl><Input {...field} data-testid="input-description" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
               <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="weightKg"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>משקל תכולה (ק"ג)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.001" {...field} data-testid="input-weight" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="pricePerKg"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>מחיר לק"ג (₪)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} data-testid="input-price-per-kg" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
+                <FormField control={form.control} name="priceAfterVat" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>הערות (אופציונלי)</FormLabel>
+                    <FormLabel>מחיר לאחר מע"מ (₪)</FormLabel>
                     <FormControl>
-                      <Input {...field} data-testid="input-notes" />
+                      <Input
+                        type="number" step="0.01" {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          const v = parseFloat(e.target.value);
+                          if (!isNaN(v)) form.setValue("priceBeforeVat", parseFloat((v / (1 + VAT_RATE)).toFixed(2)));
+                        }}
+                        data-testid="input-price-after-vat"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
-                )}
-              />
+                )} />
+                <FormField control={form.control} name="priceBeforeVat" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>מחיר לפני מע"מ (₪)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number" step="0.01" {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          const v = parseFloat(e.target.value);
+                          if (!isNaN(v)) form.setValue("priceAfterVat", parseFloat((v * (1 + VAT_RATE)).toFixed(2)));
+                        }}
+                        data-testid="input-price-before-vat"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="weightKg" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>משקל תכולה (ק"ג)</FormLabel>
+                    <FormControl><Input type="number" step="0.001" {...field} data-testid="input-weight" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="pricePerKg" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>מחיר לק"ג (₪)</FormLabel>
+                    <FormControl><Input type="number" step="0.01" {...field} data-testid="input-price-per-kg" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+
+              <div className="border-t pt-3">
+                <p className="text-sm font-semibold text-muted-foreground mb-3">גדלי אריזה (משקל/כמות)</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <FormField control={form.control} name="sizeSmall" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>קטן</FormLabel>
+                      <FormControl><Input {...field} placeholder="למשל: 200 גרם" data-testid="input-size-small" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="sizeMedium" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>בינוני</FormLabel>
+                      <FormControl><Input {...field} placeholder="למשל: 500 גרם" data-testid="input-size-medium" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="sizeLarge" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>גדול</FormLabel>
+                      <FormControl><Input {...field} placeholder="למשל: 1 ק&quot;ג" data-testid="input-size-large" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+              </div>
+
+              <FormField control={form.control} name="weightOrAmount" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>או משקל/כמות</FormLabel>
+                  <FormControl><Input {...field} placeholder="למשל: 750 גרם" data-testid="input-weight-or-amount" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="notes" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>הערות מוצר</FormLabel>
+                  <FormControl><Input {...field} data-testid="input-notes" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="productNotes" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>הערות נוספות (מלל חופשי)</FormLabel>
+                  <FormControl><Input {...field} placeholder="הערה חופשית..." data-testid="input-product-notes" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
               <DialogFooter className="pt-4 sm:justify-start">
                 <Button
                   type="submit"
