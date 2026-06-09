@@ -29,6 +29,8 @@ router.post("/customers", async (req, res) => {
       contactName: body.data.contactName ?? null,
       phone: body.data.phone ?? null,
       email: body.data.email ?? null,
+      companyId: body.data.companyId ?? null,
+      deliveryAddress: body.data.deliveryAddress ?? null,
     })
     .returning();
   res.status(201).json(newCustomer);
@@ -52,6 +54,8 @@ router.put("/customers/:id", async (req, res) => {
       contactName: body.data.contactName ?? null,
       phone: body.data.phone ?? null,
       email: body.data.email ?? null,
+      companyId: body.data.companyId ?? null,
+      deliveryAddress: body.data.deliveryAddress ?? null,
     })
     .where(eq(customersTable.id, params.data.id))
     .returning();

@@ -15,5 +15,9 @@ export interface Customer {
   phone?: string | null;
   /** @nullable */
   email?: string | null;
+  /** @nullable */
+  companyId?: string | null;
+  /** @nullable */
+  deliveryAddress?: string | null;
   createdAt: Date;
 }

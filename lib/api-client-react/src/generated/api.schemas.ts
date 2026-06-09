@@ -18,6 +18,10 @@ export interface Customer {
   phone?: string | null;
   /** @nullable */
   email?: string | null;
+  /** @nullable */
+  companyId?: string | null;
+  /** @nullable */
+  deliveryAddress?: string | null;
   createdAt: string;
 }
 
@@ -27,6 +31,8 @@ export interface CustomerInput {
   contactName?: string;
   phone?: string;
   email?: string;
+  companyId?: string;
+  deliveryAddress?: string;
 }
 
 export interface Product {

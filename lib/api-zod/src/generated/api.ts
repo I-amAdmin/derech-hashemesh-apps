@@ -171,6 +171,8 @@ export const ListCustomersResponseItem = zod.object({
   "contactName": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "email": zod.string().nullish(),
+  "companyId": zod.string().nullish(),
+  "deliveryAddress": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
@@ -186,7 +188,9 @@ export const CreateCustomerBody = zod.object({
   "businessName": zod.string().min(1),
   "contactName": zod.string().optional(),
   "phone": zod.string().optional(),
-  "email": zod.string().optional()
+  "email": zod.string().optional(),
+  "companyId": zod.string().optional(),
+  "deliveryAddress": zod.string().optional()
 })
 
 
@@ -204,7 +208,9 @@ export const UpdateCustomerBody = zod.object({
   "businessName": zod.string().min(1),
   "contactName": zod.string().optional(),
   "phone": zod.string().optional(),
-  "email": zod.string().optional()
+  "email": zod.string().optional(),
+  "companyId": zod.string().optional(),
+  "deliveryAddress": zod.string().optional()
 })
 
 export const UpdateCustomerResponse = zod.object({
@@ -213,6 +219,8 @@ export const UpdateCustomerResponse = zod.object({
   "contactName": zod.string().nullish(),
   "phone": zod.string().nullish(),
   "email": zod.string().nullish(),
+  "companyId": zod.string().nullish(),
+  "deliveryAddress": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 

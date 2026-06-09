@@ -12,4 +12,6 @@ export interface CustomerInput {
   contactName?: string;
   phone?: string;
   email?: string;
+  companyId?: string;
+  deliveryAddress?: string;
 }

@@ -8,6 +8,8 @@ export const customersTable = pgTable("customers", {
   contactName: text("contact_name"),
   phone: text("phone"),
   email: text("email"),
+  companyId: text("company_id"),
+  deliveryAddress: text("delivery_address"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

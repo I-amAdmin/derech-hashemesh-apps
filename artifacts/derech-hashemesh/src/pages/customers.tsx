@@ -32,7 +32,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Plus, Pencil, Trash2, Users, Phone, Mail, Building2, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Phone, Mail, Building2, Search, MapPin, Hash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const customerSchema = z.object({
@@ -40,6 +40,8 @@ const customerSchema = z.object({
   contactName: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email("כתובת מייל לא תקינה").optional().or(z.literal("")),
+  companyId: z.string().optional(),
+  deliveryAddress: z.string().optional(),
 });
 
 type CustomerFormValues = z.infer<typeof customerSchema>;
@@ -50,6 +52,8 @@ type CustomerRow = {
   contactName?: string | null;
   phone?: string | null;
   email?: string | null;
+  companyId?: string | null;
+  deliveryAddress?: string | null;
 };
 
 export default function Customers() {
@@ -67,14 +71,14 @@ export default function Customers() {
 
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
-    defaultValues: { businessName: "", contactName: "", phone: "", email: "" },
+    defaultValues: { businessName: "", contactName: "", phone: "", email: "", companyId: "", deliveryAddress: "" },
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() });
 
   const openCreate = () => {
     setEditingCustomer(null);
-    form.reset({ businessName: "", contactName: "", phone: "", email: "" });
+    form.reset({ businessName: "", contactName: "", phone: "", email: "", companyId: "", deliveryAddress: "" });
     setDialogOpen(true);
   };
 
@@ -85,6 +89,8 @@ export default function Customers() {
       contactName: c.contactName ?? "",
       phone: c.phone ?? "",
       email: c.email ?? "",
+      companyId: c.companyId ?? "",
+      deliveryAddress: c.deliveryAddress ?? "",
     });
     setDialogOpen(true);
   };
@@ -95,6 +101,8 @@ export default function Customers() {
       contactName: data.contactName || undefined,
       phone: data.phone || undefined,
       email: data.email || undefined,
+      companyId: data.companyId || undefined,
+      deliveryAddress: data.deliveryAddress || undefined,
     };
 
     if (editingCustomer) {
@@ -228,6 +236,12 @@ export default function Customers() {
                       <span>{c.contactName}</span>
                     </div>
                   )}
+                  {c.companyId && (
+                    <div className="flex items-center gap-2">
+                      <Hash className="w-3.5 h-3.5" />
+                      <span>ח.פ {c.companyId}</span>
+                    </div>
+                  )}
                   {c.phone && (
                     <div className="flex items-center gap-2">
                       <Phone className="w-3.5 h-3.5" />
@@ -238,6 +252,12 @@ export default function Customers() {
                     <div className="flex items-center gap-2">
                       <Mail className="w-3.5 h-3.5" />
                       <span dir="ltr" className="truncate">{c.email}</span>
+                    </div>
+                  )}
+                  {c.deliveryAddress && (
+                    <div className="flex items-start gap-2">
+                      <MapPin className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                      <span className="break-words">{c.deliveryAddress}</span>
                     </div>
                   )}
                 </div>
@@ -303,6 +323,32 @@ export default function Customers() {
                     <FormLabel>אימייל (אופציונלי)</FormLabel>
                     <FormControl>
                       <Input {...field} dir="ltr" className="text-left" placeholder="name@example.com" data-testid="input-email" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="companyId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>מס' ח.פ (אופציונלי)</FormLabel>
+                    <FormControl>
+                      <Input {...field} dir="ltr" className="text-left" placeholder="מספר חברה / עוסק מורשה" data-testid="input-company-id" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="deliveryAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>כתובת אספקה (אופציונלי)</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="רחוב, עיר" data-testid="input-delivery-address" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
