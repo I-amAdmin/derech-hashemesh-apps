@@ -39,12 +39,12 @@ args = "PORT=18115 pnpm --filter @workspace/mobile run dev"
 name = "test"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "test"
-
 [workflows.workflow.metadata]
 isValidation = true
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm run test"
 
 [agent]
 stack = "PNPM_WORKSPACE"
