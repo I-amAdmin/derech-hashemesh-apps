@@ -29,6 +29,7 @@ const quoteItemSchema = z.object({
   productId: z.number(),
   quantity: z.coerce.number().min(1, "כמות חייבת להיות לפחות 1"),
   customPricePerKg: z.coerce.number().min(0, "מחיר לא יכול להיות שלילי"),
+  selectedSize: z.enum(["small", "medium", "large"]).optional(),
 });
 
 const quoteSchema = z.object({
@@ -55,6 +56,7 @@ export default function QuoteNew() {
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
   const [pendingSelection, setPendingSelection] = useState<Set<number>>(new Set());
+  const [pendingSizes, setPendingSizes] = useState<Map<number, "small" | "medium" | "large">>(new Map());
   const [selectorPage, setSelectorPage] = useState(0);
   const PAGE_SIZE = 50;
 
@@ -137,8 +139,9 @@ export default function QuoteNew() {
     const toAdd = (products ?? []).filter(
       (p) => pendingSelection.has(p.id) && !items.some((item) => item.productId === p.id)
     );
-    toAdd.forEach((p) => append({ productId: p.id, quantity: 1, customPricePerKg: p.pricePerKg }));
+    toAdd.forEach((p) => append({ productId: p.id, quantity: 1, customPricePerKg: p.pricePerKg, selectedSize: pendingSizes.get(p.id) }));
     setPendingSelection(new Set());
+    setPendingSizes(new Map());
     setIsProductSelectorOpen(false);
     setProductSearch("");
     setSelectedDept(null);
@@ -146,6 +149,7 @@ export default function QuoteNew() {
 
   const closeSelectorDialog = () => {
     setPendingSelection(new Set());
+    setPendingSizes(new Map());
     setProductSearch("");
     setSelectedDept(null);
     setIsProductSelectorOpen(false);
@@ -316,7 +320,14 @@ export default function QuoteNew() {
                         return (
                           <TableRow key={field.id} data-testid={`row-item-${index}`}>
                             <TableCell className="font-mono text-sm">{product.barcode}</TableCell>
-                            <TableCell className="font-medium">{product.description}</TableCell>
+                            <TableCell className="font-medium">
+                              <div>{product.description}</div>
+                              {items[index]?.selectedSize && (
+                                <span className="inline-flex items-center mt-1 text-xs font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5">
+                                  {items[index].selectedSize === "small" ? "קטן" : items[index].selectedSize === "medium" ? "בינוני" : "גדול"}
+                                </span>
+                              )}
+                            </TableCell>
                             <TableCell>{formatNumber(product.weightKg)} ק"ג</TableCell>
                             <TableCell>
                               <FormField
@@ -508,9 +519,31 @@ export default function QuoteNew() {
                             {alreadyAdded && <div className="text-xs text-green-600 font-medium">✓ כבר בהצעה</div>}
                           </TableCell>
                           <TableCell><Badge variant="outline" className="text-xs">{p.department}</Badge></TableCell>
-                          <TableCell className="text-sm text-center">{p.sizeSmall || "—"}</TableCell>
-                          <TableCell className="text-sm text-center">{p.sizeMedium || "—"}</TableCell>
-                          <TableCell className="text-sm text-center">{p.sizeLarge || "—"}</TableCell>
+                          {(["small", "medium", "large"] as const).map((size) => {
+                            const label = size === "small" ? p.sizeSmall : size === "medium" ? p.sizeMedium : p.sizeLarge;
+                            const selected = pendingSizes.get(p.id) === size;
+                            return (
+                              <TableCell
+                                key={size}
+                                className={`text-sm text-center transition-colors ${!alreadyAdded ? "cursor-pointer" : ""} ${selected ? "bg-primary/10" : !alreadyAdded ? "hover:bg-muted/60" : ""}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (alreadyAdded) return;
+                                  setPendingSizes((prev) => {
+                                    const next = new Map(prev);
+                                    if (next.get(p.id) === size) next.delete(p.id);
+                                    else next.set(p.id, size);
+                                    return next;
+                                  });
+                                }}
+                              >
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <div className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-colors ${selected ? "border-primary bg-primary" : "border-muted-foreground/40"}`} />
+                                  <span className={selected ? "font-semibold text-primary" : ""}>{label || "—"}</span>
+                                </div>
+                              </TableCell>
+                            );
+                          })}
                           <TableCell className="text-sm">{p.weightOrAmount || "—"}</TableCell>
                           <TableCell className="text-primary font-semibold">{formatCurrency(p.pricePerKg)}</TableCell>
                           <TableCell>{formatCurrency(p.pricePerKg * p.weightKg)}</TableCell>
