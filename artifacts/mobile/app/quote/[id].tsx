@@ -32,14 +32,14 @@ function StatusBadge({ status }: { status: string }) {
     pending: { bg: colors.pendingBg, text: colors.pending },
     approved: { bg: colors.approvedBg, text: colors.approved },
     cancelled: { bg: colors.cancelledBg, text: colors.cancelled },
-    changes_requested: { bg: colors.pendingBg, text: colors.pending },
+    changes_requested: { bg: colors.changesRequestedBg, text: colors.changesRequested },
   };
   const s = map[status] ?? { bg: colors.muted, text: colors.mutedForeground };
   const label: Record<string, string> = {
     pending: "ממתין",
     approved: "מאושר",
     cancelled: "בוטל",
-    changes_requested: "בקשת שינויים",
+    changes_requested: "התבקשו שינויים",
   };
   return (
     <View style={[styles.badge, { backgroundColor: s.bg }]}>
@@ -285,6 +285,15 @@ export default function QuoteDetailScreen() {
               </Text>
             </View>
           ) : null}
+          {quote.customerNote ? (
+            <View style={[styles.customerNoteBox, { backgroundColor: colors.changesRequestedBg, borderColor: colors.changesRequested }]}>
+              <View style={styles.customerNoteHeader}>
+                <Feather name="message-square" size={14} color={colors.changesRequested} />
+                <Text style={[styles.customerNoteTitle, { color: colors.changesRequested }]}>הלקוח ביקש שינויים:</Text>
+              </View>
+              <Text style={[styles.customerNoteText, { color: colors.changesRequested }]}>{quote.customerNote}</Text>
+            </View>
+          ) : null}
           {quote.notes ? (
             <View style={[styles.notesBox, { backgroundColor: colors.accent }]}>
               <Text style={[styles.notesText, { color: colors.accentForeground }]}>{quote.notes}</Text>
@@ -506,6 +515,10 @@ const styles = StyleSheet.create({
   totalAmount: { fontSize: 24, fontWeight: "800" },
   viewedRow: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 8, padding: 10, marginTop: 14 },
   viewedText: { fontSize: 13, fontWeight: "500", flex: 1 },
+  customerNoteBox: { borderRadius: 8, borderWidth: 1, padding: 12, marginTop: 14 },
+  customerNoteHeader: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 6 },
+  customerNoteTitle: { fontSize: 13, fontWeight: "700" },
+  customerNoteText: { fontSize: 14, lineHeight: 20 },
   notesBox: { borderRadius: 8, padding: 12, marginTop: 14 },
   notesText: { fontSize: 14 },
   sharePanel: {

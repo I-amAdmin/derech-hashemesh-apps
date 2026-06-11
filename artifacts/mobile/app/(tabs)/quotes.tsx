@@ -18,14 +18,22 @@ import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { Quote } from "@workspace/api-client-react";
 
-type StatusFilter = "all" | "pending" | "approved" | "cancelled";
+type StatusFilter = "all" | "pending" | "approved" | "cancelled" | "changes_requested";
 
 const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
-  { key: "all", label: "All" },
-  { key: "pending", label: "Pending" },
-  { key: "approved", label: "Approved" },
-  { key: "cancelled", label: "Cancelled" },
+  { key: "all", label: "הכל" },
+  { key: "pending", label: "ממתין" },
+  { key: "approved", label: "מאושר" },
+  { key: "cancelled", label: "בוטל" },
+  { key: "changes_requested", label: "שינויים" },
 ];
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "ממתין",
+  approved: "מאושר",
+  cancelled: "בוטל",
+  changes_requested: "התבקשו שינויים",
+};
 
 function StatusBadge({ status }: { status: string }) {
   const colors = useColors();
@@ -33,11 +41,12 @@ function StatusBadge({ status }: { status: string }) {
     pending: { bg: colors.pendingBg, text: colors.pending },
     approved: { bg: colors.approvedBg, text: colors.approved },
     cancelled: { bg: colors.cancelledBg, text: colors.cancelled },
+    changes_requested: { bg: colors.changesRequestedBg, text: colors.changesRequested },
   };
   const s = map[status] ?? { bg: colors.muted, text: colors.mutedForeground };
   return (
     <View style={[styles.badge, { backgroundColor: s.bg }]}>
-      <Text style={[styles.badgeText, { color: s.text }]}>{status}</Text>
+      <Text style={[styles.badgeText, { color: s.text }]}>{STATUS_LABELS[status] ?? status}</Text>
     </View>
   );
 }

@@ -35,6 +35,8 @@ const colors = {
     cancelledBg: "#ffe4e6",
     viewed: "#047857",
     viewedBg: "#d1fae5",
+    changesRequested: "#c2410c",
+    changesRequestedBg: "#ffedd5",
   },
 
   dark: {
@@ -73,6 +75,8 @@ const colors = {
     cancelledBg: "#4c0519",
     viewed: "#34d399",
     viewedBg: "#064e3b",
+    changesRequested: "#fb923c",
+    changesRequestedBg: "#431407",
   },
 
   radius: 8,
