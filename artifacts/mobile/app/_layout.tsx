@@ -15,6 +15,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 if (process.env.EXPO_PUBLIC_DOMAIN) {
   setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
@@ -32,6 +33,7 @@ const queryClient = new QueryClient({
 });
 
 function RootLayoutNav() {
+  usePushNotifications();
   return (
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

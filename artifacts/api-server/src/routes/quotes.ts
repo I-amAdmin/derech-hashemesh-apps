@@ -13,6 +13,7 @@ import {
   DeleteQuoteParams,
   RequestChangesPublicQuoteBody,
 } from "@workspace/api-zod";
+import { sendPushNotifications } from "../lib/push-notifications.js";
 
 const router = Router();
 
@@ -126,6 +127,12 @@ router.post("/quotes/public/:token/request-changes", async (req, res) => {
     .from(quoteItemsTable)
     .where(eq(quoteItemsTable.quoteId, quote.id));
 
+  sendPushNotifications({
+    title: "בקשת שינויים 🔄",
+    body: `${quote.customerName} ביקש שינויים בהצעה #${quote.id}`,
+    data: { quoteId: quote.id },
+  }).catch(() => {});
+
   res.json({
     ...updated,
     totalAmount: Number(updated.totalAmount),
@@ -166,6 +173,12 @@ router.post("/quotes/public/:token/approve", async (req, res) => {
     .select()
     .from(quoteItemsTable)
     .where(eq(quoteItemsTable.quoteId, quote.id));
+
+  sendPushNotifications({
+    title: "הצעה אושרה ✅",
+    body: `${quote.customerName} אישר את הצעה #${quote.id}`,
+    data: { quoteId: quote.id },
+  }).catch(() => {});
 
   res.json({
     ...updated,
