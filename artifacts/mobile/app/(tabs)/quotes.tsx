@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Feather } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
 import { Quote } from "@workspace/api-client-react";
 
@@ -65,7 +66,15 @@ function QuoteCard({ quote, onPress }: { quote: Quote; onPress: () => void }) {
         <Text style={[styles.cardCustomer, { color: colors.foreground }]} numberOfLines={1}>
           {quote.customerName}
         </Text>
-        <StatusBadge status={quote.status} />
+        <View style={styles.cardTopRight}>
+          {quote.viewedAt ? (
+            <View style={[styles.viewedBadge, { backgroundColor: colors.viewedBg }]}>
+              <Feather name="eye" size={11} color={colors.viewed} />
+              <Text style={[styles.viewedBadgeText, { color: colors.viewed }]}>נצפה</Text>
+            </View>
+          ) : null}
+          <StatusBadge status={quote.status} />
+        </View>
       </View>
       {quote.contactName ? (
         <Text style={[styles.cardContact, { color: colors.mutedForeground }]} numberOfLines={1}>
@@ -208,6 +217,9 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   cardTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
+  cardTopRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  viewedBadge: { flexDirection: "row", alignItems: "center", gap: 3, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 },
+  viewedBadgeText: { fontSize: 11, fontWeight: "600" },
   cardCustomer: { fontSize: 16, fontWeight: "700", flex: 1, marginRight: 8 },
   cardContact: { fontSize: 13, marginBottom: 10 },
   cardBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 6 },

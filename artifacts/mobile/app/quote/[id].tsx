@@ -276,6 +276,15 @@ export default function QuoteDetailScreen() {
               </Text>
             </View>
           </View>
+          {quote.viewedAt ? (
+            <View style={[styles.viewedRow, { backgroundColor: colors.viewedBg }]}>
+              <Feather name="eye" size={14} color={colors.viewed} />
+              <Text style={[styles.viewedText, { color: colors.viewed }]}>
+                {"הלקוח צפה בהצעה — "}
+                {new Date(quote.viewedAt).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" })}
+              </Text>
+            </View>
+          ) : null}
           {quote.notes ? (
             <View style={[styles.notesBox, { backgroundColor: colors.accent }]}>
               <Text style={[styles.notesText, { color: colors.accentForeground }]}>{quote.notes}</Text>
@@ -495,6 +504,8 @@ const styles = StyleSheet.create({
   metaLabel: { fontSize: 12, fontWeight: "500", marginBottom: 2 },
   metaValue: { fontSize: 15, fontWeight: "600" },
   totalAmount: { fontSize: 24, fontWeight: "800" },
+  viewedRow: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 8, padding: 10, marginTop: 14 },
+  viewedText: { fontSize: 13, fontWeight: "500", flex: 1 },
   notesBox: { borderRadius: 8, padding: 12, marginTop: 14 },
   notesText: { fontSize: 14 },
   sharePanel: {
