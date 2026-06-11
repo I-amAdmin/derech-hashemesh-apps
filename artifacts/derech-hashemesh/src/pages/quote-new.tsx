@@ -472,7 +472,10 @@ export default function QuoteNew() {
                       </TableHead>
                       <TableHead className="text-right">תיאור פריט</TableHead>
                       <TableHead className="text-right">מחלקה</TableHead>
-                      <TableHead className="text-right">משקל (ק"ג)</TableHead>
+                      <TableHead className="text-right text-center">קטן</TableHead>
+                      <TableHead className="text-right text-center">בינוני</TableHead>
+                      <TableHead className="text-right text-center">גדול</TableHead>
+                      <TableHead className="text-right">משקל/כמות</TableHead>
                       <TableHead className="text-right">מחיר לק"ג</TableHead>
                       <TableHead className="text-right">מחיר ליח'</TableHead>
                     </TableRow>
@@ -505,7 +508,10 @@ export default function QuoteNew() {
                             {alreadyAdded && <div className="text-xs text-green-600 font-medium">✓ כבר בהצעה</div>}
                           </TableCell>
                           <TableCell><Badge variant="outline" className="text-xs">{p.department}</Badge></TableCell>
-                          <TableCell>{formatNumber(p.weightKg)}</TableCell>
+                          <TableCell className="text-sm text-center">{p.sizeSmall || "—"}</TableCell>
+                          <TableCell className="text-sm text-center">{p.sizeMedium || "—"}</TableCell>
+                          <TableCell className="text-sm text-center">{p.sizeLarge || "—"}</TableCell>
+                          <TableCell className="text-sm">{p.weightOrAmount || "—"}</TableCell>
                           <TableCell className="text-primary font-semibold">{formatCurrency(p.pricePerKg)}</TableCell>
                           <TableCell>{formatCurrency(p.pricePerKg * p.weightKg)}</TableCell>
                         </TableRow>
