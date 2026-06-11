@@ -23,6 +23,7 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Trash2, Plus, ArrowRight, Search, Check, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -40,6 +41,8 @@ const quoteSchema = z.object({
   email: z.string().email("כתובת מייל לא תקינה").optional().or(z.literal("")),
   date: z.string().min(1, "שדה חובה"),
   notes: z.string().optional(),
+  companyRegistration: z.string().optional(),
+  deliveryTime: z.string().optional(),
   items: z.array(quoteItemSchema).min(1, "יש להוסיף לפחות פריט אחד"),
 });
 
@@ -51,6 +54,8 @@ export default function QuoteEdit() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const ITEMS_COL_WIDTHS = { barcode: 105, description: 175, small: 68, medium: 68, large: 68, weightAmt: 88, priceKg: 120, priceUnit: 108, qty: 78, total: 100 };
+  const { widths: iw, startResize: irz } = useResizableColumns(ITEMS_COL_WIDTHS, "quote-items-col-widths");
   const { data: products, isLoading: isLoadingProducts } = useListProducts();
   const { data: customers } = useListCustomers();
   const { data: existingQuote, isLoading: isLoadingQuote } = useGetQuote(quoteId, {
@@ -76,6 +81,8 @@ export default function QuoteEdit() {
       email: "",
       date: "",
       notes: "",
+      companyRegistration: "",
+      deliveryTime: "",
       items: [],
     },
   });
@@ -92,6 +99,8 @@ export default function QuoteEdit() {
       email: existingQuote.email ?? "",
       date: existingQuote.date,
       notes: existingQuote.notes ?? "",
+      companyRegistration: existingQuote.companyRegistration ?? "",
+      deliveryTime: existingQuote.deliveryTime ?? "",
       items: existingQuote.items.map((item) => ({
         productId: item.productId ?? 0,
         quantity: item.quantity,
@@ -185,6 +194,8 @@ export default function QuoteEdit() {
           email: data.email || undefined,
           date: data.date,
           notes: data.notes || undefined,
+          companyRegistration: data.companyRegistration || undefined,
+          deliveryTime: data.deliveryTime || undefined,
           items: data.items.map((item) => {
             const product = getProductDetails(item.productId);
             const catalogPrice = product?.pricePerKg ?? 0;
@@ -282,6 +293,12 @@ export default function QuoteEdit() {
                 <FormField control={form.control} name="date" render={({ field }) => (
                   <FormItem><FormLabel>תאריך</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
+                <FormField control={form.control} name="companyRegistration" render={({ field }) => (
+                  <FormItem><FormLabel>מס' ח.פ</FormLabel><FormControl><Input {...field} placeholder="מספר חברה / ח.פ (אופציונלי)" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={form.control} name="deliveryTime" render={({ field }) => (
+                  <FormItem><FormLabel>זמן אספקה</FormLabel><FormControl><Input {...field} placeholder="לדוגמה: 3-5 ימי עסקים" /></FormControl><FormMessage /></FormItem>
+                )} />
               </div>
             </CardContent>
           </Card>
@@ -301,16 +318,27 @@ export default function QuoteEdit() {
                 </div>
               ) : (
                 <div className="border rounded-md overflow-x-auto">
-                  <Table>
+                  <Table style={{ tableLayout: "fixed" }}>
                     <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="text-right">ברקוד</TableHead>
-                        <TableHead className="text-right">תיאור פריט</TableHead>
-                        <TableHead className="text-right">משקל יח' (ק"ג)</TableHead>
-                        <TableHead className="text-right w-[130px]">מחיר לק"ג</TableHead>
-                        <TableHead className="text-right w-[110px]">כמות</TableHead>
-                        <TableHead className="text-right">סה"כ</TableHead>
-                        <TableHead></TableHead>
+                        {[
+                          { key: "barcode", label: "ברקוד" },
+                          { key: "description", label: "תיאור פריט" },
+                          { key: "small", label: "קטן" },
+                          { key: "medium", label: "בינוני" },
+                          { key: "large", label: "גדול" },
+                          { key: "weightAmt", label: "משקל/כמות" },
+                          { key: "priceKg", label: 'מחיר לק"ג' },
+                          { key: "priceUnit", label: "מחיר ליח'" },
+                          { key: "qty", label: "כמות" },
+                          { key: "total", label: 'סה"כ' },
+                        ].map(({ key, label }) => (
+                          <TableHead key={key} style={{ width: iw[key], position: "relative" }} className="text-right text-xs px-2">
+                            {label}
+                            <div onMouseDown={(e) => irz(key, e)} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 5, cursor: "col-resize", zIndex: 1 }} className="hover:bg-primary/30" />
+                          </TableHead>
+                        ))}
+                        <TableHead className="w-10" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -321,25 +349,29 @@ export default function QuoteEdit() {
                         const catalogPrice = product.pricePerKg;
                         const currentPrice = items[index]?.customPricePerKg ?? catalogPrice;
                         const isModified = Math.abs(currentPrice - catalogPrice) > 0.001;
+                        const pricePerUnit = (items[index]?.customPricePerKg ?? catalogPrice) * product.weightKg;
 
                         return (
                           <TableRow key={field.id} data-testid={`row-item-${index}`}>
-                            <TableCell className="font-mono text-sm">{product.barcode}</TableCell>
-                            <TableCell className="font-medium">
+                            <TableCell className="font-mono text-xs px-2">{product.barcode}</TableCell>
+                            <TableCell className="text-xs font-medium px-2">
                               <div>{product.description}</div>
                               {items[index]?.selectedSize && (
-                                <span className="inline-flex items-center mt-1 text-xs font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5">
+                                <span className="inline-flex items-center mt-0.5 text-xs font-medium text-primary bg-primary/10 rounded px-1 py-0.5">
                                   {items[index].selectedSize === "small" ? "קטן" : items[index].selectedSize === "medium" ? "בינוני" : "גדול"}
                                 </span>
                               )}
                             </TableCell>
-                            <TableCell>{formatNumber(product.weightKg)} ק"ג</TableCell>
-                            <TableCell>
+                            <TableCell className="text-xs text-center px-1">{product.sizeSmall || "—"}</TableCell>
+                            <TableCell className="text-xs text-center px-1">{product.sizeMedium || "—"}</TableCell>
+                            <TableCell className="text-xs text-center px-1">{product.sizeLarge || "—"}</TableCell>
+                            <TableCell className="text-xs px-2">{product.weightOrAmount || "—"}</TableCell>
+                            <TableCell className="px-2">
                               <FormField control={form.control} name={`items.${index}.customPricePerKg`} render={({ field: pField }) => (
                                 <FormItem className="mb-0">
                                   <FormControl>
                                     <div className="relative">
-                                      <Input type="number" step="0.01" min="0" className={`h-8 text-center pr-1 ${isModified ? "border-orange-400 bg-orange-50 font-semibold" : ""}`} {...pField} />
+                                      <Input type="number" step="0.01" min="0" className={`h-8 text-center px-1 text-xs ${isModified ? "border-orange-400 bg-orange-50 font-semibold" : ""}`} {...pField} />
                                       {isModified && <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-400" />}
                                     </div>
                                   </FormControl>
@@ -347,13 +379,14 @@ export default function QuoteEdit() {
                               )} />
                               {isModified && <div className="text-xs text-orange-500 mt-0.5">קטלוג: {formatCurrency(catalogPrice)}</div>}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="text-xs text-muted-foreground px-2">{formatCurrency(pricePerUnit)}</TableCell>
+                            <TableCell className="px-2">
                               <FormField control={form.control} name={`items.${index}.quantity`} render={({ field: qField }) => (
-                                <FormItem className="mb-0"><FormControl><Input type="number" min="1" className="h-8 text-center" {...qField} /></FormControl></FormItem>
+                                <FormItem className="mb-0"><FormControl><Input type="number" min="1" className="h-8 text-center px-1 text-xs" {...qField} /></FormControl></FormItem>
                               )} />
                             </TableCell>
-                            <TableCell className="font-bold text-primary">{formatCurrency(itemTotal)}</TableCell>
-                            <TableCell>
+                            <TableCell className="font-bold text-primary text-xs px-2">{formatCurrency(itemTotal)}</TableCell>
+                            <TableCell className="px-1">
                               <Button variant="ghost" size="icon" className="text-destructive h-8 w-8 hover:bg-destructive/10" type="button" onClick={() => remove(index)}>
                                 <Trash2 className="w-4 h-4" />
                               </Button>

@@ -1,0 +1,2 @@
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS company_registration TEXT;
+ALTER TABLE quotes ADD COLUMN IF NOT EXISTS delivery_time TEXT;

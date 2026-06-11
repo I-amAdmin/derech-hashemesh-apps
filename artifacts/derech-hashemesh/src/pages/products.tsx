@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import {
   Dialog,
   DialogContent,
@@ -76,6 +77,8 @@ export default function Products() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const PROD_COL_WIDTHS = { checkbox: 48, barcode: 125, description: 200, beforeVat: 110, afterVat: 110, small: 82, medium: 82, large: 82, weightAmt: 95, notes: 125 };
+  const { widths: pw, startResize: prz } = useResizableColumns(PROD_COL_WIDTHS, "products-col-widths");
   const { data: products, isLoading } = useListProducts();
   const { data: quotes } = useListQuotes();
   const [search, setSearch] = useState("");
@@ -423,16 +426,23 @@ export default function Products() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/30">
-                          <TableHead className="w-[48px] text-right pr-4"></TableHead>
-                          <TableHead className="text-right w-[130px]">ברקוד</TableHead>
-                          <TableHead className="text-right">תיאור פריט</TableHead>
-                          <TableHead className="text-right w-[110px]">מחיר לפני מע"מ</TableHead>
-                          <TableHead className="text-right w-[110px]">מחיר אחרי מע"מ</TableHead>
-                          <TableHead className="text-right w-[90px]">קטן</TableHead>
-                          <TableHead className="text-right w-[90px]">בינוני</TableHead>
-                          <TableHead className="text-right w-[90px]">גדול</TableHead>
-                          <TableHead className="text-right w-[100px]">משקל/כמות</TableHead>
-                          <TableHead className="text-right w-[130px]">הערות</TableHead>
+                          <TableHead style={{ width: pw.checkbox }} className="pr-4" />
+                          {[
+                            { key: "barcode", label: "ברקוד" },
+                            { key: "description", label: "תיאור פריט" },
+                            { key: "beforeVat", label: 'מחיר לפני מע"מ' },
+                            { key: "afterVat", label: 'מחיר אחרי מע"מ' },
+                            { key: "small", label: "קטן" },
+                            { key: "medium", label: "בינוני" },
+                            { key: "large", label: "גדול" },
+                            { key: "weightAmt", label: "משקל/כמות" },
+                            { key: "notes", label: "הערות" },
+                          ].map(({ key, label }) => (
+                            <TableHead key={key} style={{ width: pw[key], position: "relative" }} className="text-right">
+                              {label}
+                              <div onMouseDown={(e) => prz(key, e)} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 5, cursor: "col-resize", zIndex: 1 }} className="hover:bg-primary/30" />
+                            </TableHead>
+                          ))}
                           <TableHead className="w-[80px] text-left">פעולות</TableHead>
                         </TableRow>
                       </TableHeader>

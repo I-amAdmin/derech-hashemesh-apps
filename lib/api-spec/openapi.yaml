@@ -699,6 +699,10 @@ components:
           type: ["string", "null"]
         customerNote:
           type: ["string", "null"]
+        companyRegistration:
+          type: ["string", "null"]
+        deliveryTime:
+          type: ["string", "null"]
         shareToken:
           type: ["string", "null"]
         viewedAt:
@@ -733,6 +737,10 @@ components:
         notes:
           type: ["string", "null"]
         customerNote:
+          type: ["string", "null"]
+        companyRegistration:
+          type: ["string", "null"]
+        deliveryTime:
           type: ["string", "null"]
         shareToken:
           type: ["string", "null"]
@@ -771,6 +779,10 @@ components:
           type: string
           format: date
         notes:
+          type: string
+        companyRegistration:
+          type: string
+        deliveryTime:
           type: string
         items:
           type: array

@@ -15,5 +15,7 @@ export interface QuoteInput {
   email?: string;
   date: Date;
   notes?: string;
+  companyRegistration?: string;
+  deliveryTime?: string;
   items: QuoteItemInput[];
 }

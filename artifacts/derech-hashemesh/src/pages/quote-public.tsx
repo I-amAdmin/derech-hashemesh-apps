@@ -238,6 +238,12 @@ export default function QuotePublic() {
               {quote.email && (
                 <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400" /><span dir="ltr">{quote.email}</span></div>
               )}
+              {quote.companyRegistration && (
+                <div className="flex items-center gap-2"><span className="text-gray-400 font-semibold text-xs">ח.פ</span><span>{quote.companyRegistration}</span></div>
+              )}
+              {quote.deliveryTime && (
+                <div className="flex items-center gap-2"><span className="text-gray-400 font-semibold text-xs">זמן אספקה</span><span>{quote.deliveryTime}</span></div>
+              )}
             </div>
           </div>
 

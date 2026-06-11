@@ -287,7 +287,7 @@ router.post("/quotes", async (req, res) => {
     return;
   }
 
-  const { customerName, contactName, customerPhone, email, date: quoteDate, notes, items } = body.data;
+  const { customerName, contactName, customerPhone, email, date: quoteDate, notes, companyRegistration, deliveryTime, items } = body.data;
 
   const allProducts = await db.select().from(productsTable);
   const productMap = Object.fromEntries(allProducts.map((p) => [p.id, p]));
@@ -303,6 +303,8 @@ router.post("/quotes", async (req, res) => {
       email: email ?? null,
       date: String(quoteDate).slice(0, 10),
       notes: notes ?? null,
+      companyRegistration: companyRegistration ?? null,
+      deliveryTime: deliveryTime ?? null,
       totalAmount: String(totalAmount),
       status: "pending",
     })
@@ -345,7 +347,7 @@ router.put("/quotes/:id", async (req, res) => {
     return;
   }
 
-  const { customerName, contactName, customerPhone, email, date: quoteDate, notes, items } = body.data;
+  const { customerName, contactName, customerPhone, email, date: quoteDate, notes, companyRegistration, deliveryTime, items } = body.data;
 
   const allProducts = await db.select().from(productsTable);
   const productMap = Object.fromEntries(allProducts.map((p) => [p.id, p]));
@@ -361,6 +363,8 @@ router.put("/quotes/:id", async (req, res) => {
       email: email ?? null,
       date: String(quoteDate).slice(0, 10),
       notes: notes ?? null,
+      companyRegistration: companyRegistration ?? null,
+      deliveryTime: deliveryTime ?? null,
       totalAmount: String(totalAmount),
     })
     .where(eq(quotesTable.id, params.data.id))

@@ -29,6 +29,13 @@
       "when": 1749700000000,
       "tag": "0003_add_quote_item_selected_size",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1749800000000,
+      "tag": "0004_add_quote_company_delivery",
+      "breakpoints": true
     }
   ]
 }

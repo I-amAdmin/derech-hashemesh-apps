@@ -200,6 +200,10 @@ export interface Quote {
   /** @nullable */
   customerNote?: string | null;
   /** @nullable */
+  companyRegistration?: string | null;
+  /** @nullable */
+  deliveryTime?: string | null;
+  /** @nullable */
   shareToken?: string | null;
   /** @nullable */
   viewedAt?: string | null;
@@ -233,6 +237,10 @@ export interface QuoteDetail {
   /** @nullable */
   customerNote?: string | null;
   /** @nullable */
+  companyRegistration?: string | null;
+  /** @nullable */
+  deliveryTime?: string | null;
+  /** @nullable */
   shareToken?: string | null;
   /** @nullable */
   viewedAt?: string | null;
@@ -252,6 +260,8 @@ export interface QuoteInput {
   email?: string;
   date: string;
   notes?: string;
+  companyRegistration?: string;
+  deliveryTime?: string;
   items: QuoteItemInput[];
 }
 
