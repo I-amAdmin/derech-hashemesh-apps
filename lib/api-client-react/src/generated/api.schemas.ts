@@ -140,7 +140,24 @@ export interface QuoteItem {
   pricePerKg: number;
   quantity: number;
   totalPrice: number;
+  /**
+     * Which size variant was selected (small/medium/large)
+     * @nullable
+     */
+  selectedSize?: string | null;
 }
+
+/**
+ * Which size variant was selected
+ */
+export type QuoteItemInputSelectedSize = typeof QuoteItemInputSelectedSize[keyof typeof QuoteItemInputSelectedSize];
+
+
+export const QuoteItemInputSelectedSize = {
+  small: 'small',
+  medium: 'medium',
+  large: 'large',
+} as const;
 
 export interface QuoteItemInput {
   productId: number;
@@ -151,6 +168,8 @@ export interface QuoteItemInput {
      * @minimum 0
      */
   customPricePerKg?: number;
+  /** Which size variant was selected */
+  selectedSize?: QuoteItemInputSelectedSize;
 }
 
 export type QuoteStatus = typeof QuoteStatus[keyof typeof QuoteStatus];

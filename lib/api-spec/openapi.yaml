@@ -649,6 +649,9 @@ components:
           type: integer
         totalPrice:
           type: number
+        selectedSize:
+          type: ["string", "null"]
+          description: Which size variant was selected (small/medium/large)
 
     QuoteItemInput:
       type: object
@@ -663,6 +666,10 @@ components:
           type: number
           minimum: 0
           description: Override the catalog price per kg for this item
+        selectedSize:
+          type: string
+          enum: [small, medium, large]
+          description: Which size variant was selected
 
     Quote:
       type: object

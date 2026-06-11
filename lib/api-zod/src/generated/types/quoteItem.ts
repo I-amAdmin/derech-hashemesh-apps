@@ -15,4 +15,9 @@ export interface QuoteItem {
   pricePerKg: number;
   quantity: number;
   totalPrice: number;
+  /**
+     * Which size variant was selected (small/medium/large)
+     * @nullable
+     */
+  selectedSize?: string | null;
 }

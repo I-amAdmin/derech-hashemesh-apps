@@ -525,7 +525,14 @@ export default function QuoteDetail() {
                 return (
                   <TableRow key={item.id} className="border-gray-100 hover:bg-transparent" style={{ backgroundColor: idx % 2 === 0 ? "white" : "#faf8f4" }} data-testid={`row-quote-item-${item.id}`}>
                     <TableCell className="font-mono text-gray-500 py-3 text-sm">{item.barcode}</TableCell>
-                    <TableCell className="font-medium py-3">{item.description}</TableCell>
+                    <TableCell className="font-medium py-3">
+                      <div>{item.description}</div>
+                      {item.selectedSize && (
+                        <span className="inline-flex items-center mt-1 text-xs font-medium rounded px-1.5 py-0.5" style={{ backgroundColor: "#f5f0e8", color: "#5a4a2a" }}>
+                          {item.selectedSize === "small" ? "קטן" : item.selectedSize === "medium" ? "בינוני" : "גדול"}
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="py-3">{formatNumber(totalWeight)}</TableCell>
                     <TableCell className="py-3">{formatCurrency(item.pricePerKg)}</TableCell>
                     <TableCell className="py-3 font-semibold">{item.quantity}</TableCell>

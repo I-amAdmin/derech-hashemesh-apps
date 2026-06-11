@@ -274,7 +274,8 @@ export const CreateQuoteBody = zod.object({
   "items": zod.array(zod.object({
   "productId": zod.number(),
   "quantity": zod.number().min(1),
-  "customPricePerKg": zod.number().min(createQuoteBodyItemsItemCustomPricePerKgMin).optional().describe('Override the catalog price per kg for this item')
+  "customPricePerKg": zod.number().min(createQuoteBodyItemsItemCustomPricePerKgMin).optional().describe('Override the catalog price per kg for this item'),
+  "selectedSize": zod.enum(['small', 'medium', 'large']).optional().describe('Which size variant was selected')
 }))
 })
 
@@ -333,7 +334,8 @@ export const GetQuoteResponse = zod.object({
   "weightKg": zod.number(),
   "pricePerKg": zod.number(),
   "quantity": zod.number(),
-  "totalPrice": zod.number()
+  "totalPrice": zod.number(),
+  "selectedSize": zod.string().nullish().describe('Which size variant was selected (small\/medium\/large)')
 }))
 })
 
@@ -361,7 +363,8 @@ export const UpdateQuoteBody = zod.object({
   "items": zod.array(zod.object({
   "productId": zod.number(),
   "quantity": zod.number().min(1),
-  "customPricePerKg": zod.number().min(updateQuoteBodyItemsItemCustomPricePerKgMin).optional().describe('Override the catalog price per kg for this item')
+  "customPricePerKg": zod.number().min(updateQuoteBodyItemsItemCustomPricePerKgMin).optional().describe('Override the catalog price per kg for this item'),
+  "selectedSize": zod.enum(['small', 'medium', 'large']).optional().describe('Which size variant was selected')
 }))
 })
 
@@ -387,7 +390,8 @@ export const UpdateQuoteResponse = zod.object({
   "weightKg": zod.number(),
   "pricePerKg": zod.number(),
   "quantity": zod.number(),
-  "totalPrice": zod.number()
+  "totalPrice": zod.number(),
+  "selectedSize": zod.string().nullish().describe('Which size variant was selected (small\/medium\/large)')
 }))
 })
 
@@ -478,7 +482,8 @@ export const GetPublicQuoteResponse = zod.object({
   "weightKg": zod.number(),
   "pricePerKg": zod.number(),
   "quantity": zod.number(),
-  "totalPrice": zod.number()
+  "totalPrice": zod.number(),
+  "selectedSize": zod.string().nullish().describe('Which size variant was selected (small\/medium\/large)')
 }))
 })
 
@@ -512,7 +517,8 @@ export const ApprovePublicQuoteResponse = zod.object({
   "weightKg": zod.number(),
   "pricePerKg": zod.number(),
   "quantity": zod.number(),
-  "totalPrice": zod.number()
+  "totalPrice": zod.number(),
+  "selectedSize": zod.string().nullish().describe('Which size variant was selected (small\/medium\/large)')
 }))
 })
 
@@ -553,7 +559,8 @@ export const RequestChangesPublicQuoteResponse = zod.object({
   "weightKg": zod.number(),
   "pricePerKg": zod.number(),
   "quantity": zod.number(),
-  "totalPrice": zod.number()
+  "totalPrice": zod.number(),
+  "selectedSize": zod.string().nullish().describe('Which size variant was selected (small\/medium\/large)')
 }))
 })
 

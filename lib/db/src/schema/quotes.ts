@@ -29,6 +29,7 @@ export const quoteItemsTable = pgTable("quote_items", {
   pricePerKg: numeric("price_per_kg", { precision: 10, scale: 2 }).notNull(),
   quantity: integer("quantity").notNull(),
   totalPrice: numeric("total_price", { precision: 12, scale: 2 }).notNull(),
+  selectedSize: text("selected_size"),
 });
 
 export const insertQuoteSchema = createInsertSchema(quotesTable).omit({ id: true, createdAt: true, totalAmount: true });

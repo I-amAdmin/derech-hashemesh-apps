@@ -255,7 +255,7 @@ router.get("/quotes/:id", async (req, res) => {
 });
 
 function resolveItems(
-  items: Array<{ productId: number; quantity: number; customPricePerKg?: number | null }>,
+  items: Array<{ productId: number; quantity: number; customPricePerKg?: number | null; selectedSize?: string | null }>,
   productMap: Record<number, { id: number; barcode: string; description: string; weightKg: string; pricePerKg: string }>
 ) {
   let totalAmount = 0;
@@ -274,6 +274,7 @@ function resolveItems(
       pricePerKg: String(pricePerKg),
       quantity: item.quantity,
       totalPrice: String(totalPrice),
+      selectedSize: item.selectedSize ?? null,
     };
   });
   return { resolved, totalAmount };

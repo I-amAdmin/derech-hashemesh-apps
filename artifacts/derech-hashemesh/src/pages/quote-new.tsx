@@ -186,6 +186,7 @@ export default function QuoteNew() {
               productId: item.productId,
               quantity: item.quantity,
               customPricePerKg: isCustom ? item.customPricePerKg : undefined,
+              selectedSize: item.selectedSize,
             };
           }),
         },

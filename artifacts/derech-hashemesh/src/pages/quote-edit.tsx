@@ -96,6 +96,7 @@ export default function QuoteEdit() {
         productId: item.productId ?? 0,
         quantity: item.quantity,
         customPricePerKg: item.pricePerKg,
+        selectedSize: (item.selectedSize as "small" | "medium" | "large" | undefined) ?? undefined,
       })).filter((item) => item.productId > 0),
     });
     setFormReady(true);
@@ -192,6 +193,7 @@ export default function QuoteEdit() {
               productId: item.productId,
               quantity: item.quantity,
               customPricePerKg: isCustom ? item.customPricePerKg : undefined,
+              selectedSize: item.selectedSize,
             };
           }),
         },

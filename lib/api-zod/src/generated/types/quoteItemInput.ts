@@ -5,6 +5,7 @@
  * API specification for דרך השמש wholesale quoting system
  * OpenAPI spec version: 0.1.0
  */
+import type { QuoteItemInputSelectedSize } from './quoteItemInputSelectedSize';
 
 export interface QuoteItemInput {
   productId: number;
@@ -15,4 +16,6 @@ export interface QuoteItemInput {
      * @minimum 0
      */
   customPricePerKg?: number;
+  /** Which size variant was selected */
+  selectedSize?: QuoteItemInputSelectedSize;
 }
