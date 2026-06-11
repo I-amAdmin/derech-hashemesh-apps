@@ -93,6 +93,33 @@ export default function QuoteDetail() {
     });
   };
 
+  const handleShareLinkViaWhatsApp = () => {
+    if (!shareUrl || !quote) return;
+    const greeting = quote.contactName || quote.customerName;
+    const text = `שלום ${greeting},\nמצורף קישור להצעת המחיר שלך מדרך השמש:\n${shareUrl}`;
+    let phone = "";
+    if (quote.customerPhone) {
+      const digits = quote.customerPhone.replace(/\D/g, "");
+      phone = digits.startsWith("0") ? "972" + digits.slice(1) : digits;
+    }
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  const handleShareLinkViaEmail = () => {
+    if (!shareUrl || !quote) return;
+    const subject = `הצעת מחיר #${quote.id} — דרך השמש`;
+    const greeting = quote.contactName || quote.customerName;
+    const body = [
+      `שלום ${greeting},`,
+      "",
+      "מצורף קישור לצפייה בהצעת המחיר שלך:",
+      shareUrl,
+      "",
+      "תודה שבחרת בדרך השמש!",
+    ].join("\n");
+    window.open(`mailto:${quote.email ?? ""}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
+  };
+
   const handlePrint = () => window.print();
 
   const handleDownloadPdf = () => {
@@ -353,33 +380,85 @@ export default function QuoteDetail() {
 
       {/* Share link panel */}
       {shareUrl && (
-        <div className="mb-6 print:hidden bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-blue-700 mb-1">קישור לשיתוף עם הלקוח</p>
-            <p className="text-sm font-mono text-blue-900 break-all">{shareUrl}</p>
+        <div className="mb-6 print:hidden bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-blue-700 mb-1">קישור לשיתוף עם הלקוח</p>
+              <p className="text-sm font-mono text-blue-900 break-all">{shareUrl}</p>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCopyLink}
+                className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-100"
+                data-testid="button-copy-share-link"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? "הועתק!" : "העתק קישור"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRevokeLink}
+                disabled={revokeShareToken.isPending}
+                className="gap-1.5 border-red-300 text-red-600 hover:bg-red-50"
+                data-testid="button-revoke-share-link"
+              >
+                <Link2Off className="w-4 h-4" />
+                בטל קישור
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2 shrink-0">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCopyLink}
-              className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-100"
-              data-testid="button-copy-share-link"
-            >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? "הועתק!" : "העתק קישור"}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleRevokeLink}
-              disabled={revokeShareToken.isPending}
-              className="gap-1.5 border-red-300 text-red-600 hover:bg-red-50"
-              data-testid="button-revoke-share-link"
-            >
-              <Link2Off className="w-4 h-4" />
-              בטל קישור
-            </Button>
+          <div className="flex gap-2 flex-wrap border-t border-blue-200 pt-3">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={!quote.customerPhone ? "cursor-not-allowed inline-flex" : "inline-flex"}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleShareLinkViaWhatsApp}
+                      disabled={!quote.customerPhone}
+                      className="gap-1.5 border-green-400 text-green-700 hover:bg-green-50"
+                      data-testid="button-share-link-whatsapp"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      שלח בוואטסאפ
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!quote.customerPhone && (
+                  <TooltipContent side="top" dir="rtl">
+                    אין מספר טלפון ללקוח זה
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={!quote.email ? "cursor-not-allowed inline-flex" : "inline-flex"}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleShareLinkViaEmail}
+                      disabled={!quote.email}
+                      className="gap-1.5 border-blue-400 text-blue-700 hover:bg-blue-100"
+                      data-testid="button-share-link-email"
+                    >
+                      <Mail className="w-4 h-4" />
+                      שלח במייל
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {!quote.email && (
+                  <TooltipContent side="top" dir="rtl">
+                    אין כתובת מייל ללקוח זה
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       )}
