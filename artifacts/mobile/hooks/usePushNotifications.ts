@@ -39,6 +39,7 @@ async function sendTokenToServer(token: string): Promise<void> {
     await fetch(`${baseUrl}/api/push-tokens`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({ token }),
     });
   } catch {
@@ -52,11 +53,12 @@ function navigateToQuote(router: ReturnType<typeof useRouter>, data: Record<stri
   }
 }
 
-export function usePushNotifications() {
+export function usePushNotifications(enabled: boolean) {
   const router = useRouter();
   const responseListenerRef = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     registerForPushNotifications().then((token) => {
       if (token) {
         sendTokenToServer(token);
@@ -78,5 +80,5 @@ export function usePushNotifications() {
     return () => {
       responseListenerRef.current?.remove();
     };
-  }, [router]);
+  }, [router, enabled]);
 }

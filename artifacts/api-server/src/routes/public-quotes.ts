@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { quotesTable, quoteItemsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { RequestChangesPublicQuoteBody } from "@workspace/api-zod";
 import { sendPushNotifications } from "../lib/push-notifications.js";
 
@@ -66,16 +66,16 @@ router.post("/quotes/public/:token/request-changes", async (req, res) => {
     return;
   }
 
-  if (quote.status === "cancelled") {
-    res.status(409).json({ error: "Quote is cancelled and cannot be updated" });
-    return;
-  }
-
   const [updated] = await db
     .update(quotesTable)
     .set({ status: "changes_requested", customerNote: body.data.note })
-    .where(eq(quotesTable.id, quote.id))
+    .where(and(eq(quotesTable.id, quote.id), eq(quotesTable.status, "pending")))
     .returning();
+
+  if (!updated) {
+    res.status(409).json({ error: "Quote is no longer pending and cannot be updated" });
+    return;
+  }
 
   const items = await db
     .select()
@@ -113,16 +113,16 @@ router.post("/quotes/public/:token/approve", async (req, res) => {
     return;
   }
 
-  if (quote.status === "cancelled") {
-    res.status(409).json({ error: "Quote is cancelled and cannot be approved" });
-    return;
-  }
-
   const [updated] = await db
     .update(quotesTable)
     .set({ status: "approved" })
-    .where(eq(quotesTable.id, quote.id))
+    .where(and(eq(quotesTable.id, quote.id), eq(quotesTable.status, "pending")))
     .returning();
+
+  if (!updated) {
+    res.status(409).json({ error: "Quote is no longer pending and cannot be approved" });
+    return;
+  }
 
   const items = await db
     .select()

@@ -16,7 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 if (process.env.EXPO_PUBLIC_DOMAIN) {
   setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
@@ -34,7 +34,8 @@ const queryClient = new QueryClient({
 });
 
 function RootLayoutNav() {
-  usePushNotifications();
+  const { auth } = useAuth();
+  usePushNotifications(auth === "authenticated");
   return (
     <Stack>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
