@@ -5,6 +5,7 @@ import {
   useCreateQuote,
   useListCustomers,
   getListQuotesQueryKey,
+  getGetQuoteQueryKey,
   getGetQuotesSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -61,7 +62,7 @@ export default function QuoteNew() {
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
   const [pendingSelection, setPendingSelection] = useState<Set<number>>(new Set());
-  const [pendingSizes, setPendingSizes] = useState<Map<number, "small" | "medium" | "large">>(new Map());
+  const [pendingSizes, setPendingSizes] = useState<Map<number, { small?: number; medium?: number; large?: number }>>(new Map());
   const [selectorPage, setSelectorPage] = useState(0);
   const PAGE_SIZE = 50;
 
@@ -143,10 +144,22 @@ export default function QuoteNew() {
   };
 
   const confirmAddProducts = () => {
-    const toAdd = (products ?? []).filter(
-      (p) => pendingSelection.has(p.id) && !items.some((item) => item.productId === p.id)
-    );
-    toAdd.forEach((p) => append({ productId: p.id, quantity: 1, customPricePerKg: p.pricePerKg, selectedSize: pendingSizes.get(p.id) }));
+    const toAdd = (products ?? []).filter((p) => pendingSelection.has(p.id));
+    toAdd.forEach((p) => {
+      const counts = pendingSizes.get(p.id) ?? {};
+      const sizes: ("small" | "medium" | "large")[] = ["small", "medium", "large"];
+      let addedAny = false;
+      sizes.forEach((size) => {
+        const qty = counts[size];
+        if (qty && qty > 0) {
+          append({ productId: p.id, quantity: qty, customPricePerKg: p.pricePerKg, selectedSize: size });
+          addedAny = true;
+        }
+      });
+      if (!addedAny && !items.some((item) => item.productId === p.id)) {
+        append({ productId: p.id, quantity: 1, customPricePerKg: p.pricePerKg });
+      }
+    });
     setPendingSelection(new Set());
     setPendingSizes(new Map());
     setIsProductSelectorOpen(false);
@@ -175,6 +188,10 @@ export default function QuoteNew() {
   const calculateTotal = () =>
     items.reduce((total, _, idx) => total + calculateItemTotal(idx), 0);
 
+  const VAT_RATE = 0.18;
+  const calculateVat = (amount: number) => amount * VAT_RATE;
+  const calculateTotalWithVat = (amount: number) => amount + calculateVat(amount);
+
   const onSubmit = (data: QuoteFormValues) => {
     createQuote.mutate(
       {
@@ -195,7 +212,7 @@ export default function QuoteNew() {
               productId: item.productId,
               quantity: item.quantity,
               customPricePerKg: isCustom ? item.customPricePerKg : undefined,
-              selectedSize: item.selectedSize,
+              selectedSize: item.selectedSize ?? undefined,
             };
           }),
         },
@@ -204,6 +221,7 @@ export default function QuoteNew() {
         onSuccess: (newQuote) => {
           queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetQuotesSummaryQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(newQuote.id) });
           toast({ title: "הצעת המחיר נוצרה בהצלחה!" });
           setLocation(`/quotes/${newQuote.id}`);
         },
@@ -294,13 +312,15 @@ export default function QuoteNew() {
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="deliveryTime" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>זמן אספקה</FormLabel>
-                    <FormControl><Input {...field} placeholder="לדוגמה: 3-5 ימי עסקים" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
+                {!items.some((it: any) => it?.selectedSize) && (
+                  <FormField control={form.control} name="deliveryTime" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>זמן אספקה</FormLabel>
+                      <FormControl><Input {...field} placeholder="לדוגמה: 3-5 ימי עסקים" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -429,11 +449,21 @@ export default function QuoteNew() {
               )}
 
               <div className="flex justify-end mt-6">
-                <div className="bg-primary/10 p-4 rounded-lg flex items-center gap-6 min-w-[300px] justify-between">
-                  <span className="text-lg font-medium">סה"כ לתשלום:</span>
-                  <span className="text-2xl font-bold text-primary" data-testid="text-total">
-                    {formatCurrency(calculateTotal())}
-                  </span>
+                <div className="bg-primary/10 p-4 rounded-lg flex flex-col gap-2 min-w-[300px] items-end">
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-sm">מחיר לפני מע"מ:</span>
+                    <span className="text-sm font-medium">{formatCurrency(calculateTotal())}</span>
+                  </div>
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-sm">מע"מ ({Math.round(VAT_RATE * 100)}%):</span>
+                    <span className="text-sm font-medium">{formatCurrency(calculateVat(calculateTotal()))}</span>
+                  </div>
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-lg font-medium">סה"כ אחרי מע"מ:</span>
+                    <span className="text-2xl font-bold text-primary" data-testid="text-total">
+                      {formatCurrency(calculateTotalWithVat(calculateTotal()))}
+                    </span>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -561,26 +591,37 @@ export default function QuoteNew() {
                           <TableCell><Badge variant="outline" className="text-xs">{p.department}</Badge></TableCell>
                           {(["small", "medium", "large"] as const).map((size) => {
                             const label = size === "small" ? p.sizeSmall : size === "medium" ? p.sizeMedium : p.sizeLarge;
-                            const selected = pendingSizes.get(p.id) === size;
+                            const counts = pendingSizes.get(p.id) ?? {};
+                            const val = counts[size] ?? 0;
                             return (
-                              <TableCell
-                                key={size}
-                                className={`text-sm text-center transition-colors ${!alreadyAdded ? "cursor-pointer" : ""} ${selected ? "bg-primary/10" : !alreadyAdded ? "hover:bg-muted/60" : ""}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (alreadyAdded) return;
-                                  setPendingSizes((prev) => {
-                                    const next = new Map(prev);
-                                    if (next.get(p.id) === size) next.delete(p.id);
-                                    else next.set(p.id, size);
-                                    return next;
-                                  });
-                                }}
-                              >
-                                <div className="flex items-center justify-center gap-1.5">
-                                  <div className={`w-3 h-3 rounded-full border-2 flex-shrink-0 transition-colors ${selected ? "border-primary bg-primary" : "border-muted-foreground/40"}`} />
-                                  <span className={selected ? "font-semibold text-primary" : ""}>{label || "—"}</span>
+                              <TableCell key={size} className={`text-sm text-center px-2`} onClick={(e) => e.stopPropagation()}>
+                                <div className="flex items-center justify-center gap-1">
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    step={1}
+                                    value={val}
+                                    onChange={(e) => {
+                                      const v = Number(e.target.value || 0);
+                                      setPendingSizes((prev) => {
+                                        const next = new Map(prev);
+                                        const cur = next.get(p.id) ?? {};
+                                        if (v <= 0) {
+                                          delete cur[size];
+                                        } else {
+                                          cur[size] = v;
+                                        }
+                                        // if cur becomes empty, remove map entry
+                                        if (Object.keys(cur).length === 0) next.delete(p.id);
+                                        else next.set(p.id, cur);
+                                        return next;
+                                      });
+                                    }}
+                                    className="h-8 w-20 text-center text-xs"
+                                    data-testid={`input-pending-${p.id}-${size}`}
+                                  />
                                 </div>
+                                <div className="text-xs mt-1">{label || "—"}</div>
                               </TableCell>
                             );
                           })}

@@ -241,7 +241,7 @@ export default function QuotePublic() {
               {quote.companyRegistration && (
                 <div className="flex items-center gap-2"><span className="text-gray-400 font-semibold text-xs">ח.פ</span><span>{quote.companyRegistration}</span></div>
               )}
-              {quote.deliveryTime && (
+              {quote.deliveryTime && !quote.items?.some((it: any) => it?.selectedSize) && (
                 <div className="flex items-center gap-2"><span className="text-gray-400 font-semibold text-xs">זמן אספקה</span><span>{quote.deliveryTime}</span></div>
               )}
             </div>
@@ -300,12 +300,29 @@ export default function QuotePublic() {
                 <span className="font-medium">{quote.items.reduce((acc, item) => acc + item.quantity, 0)}</span>
               </div>
               <div className="h-px w-full my-3" style={{ backgroundColor: "#c8b890" }} />
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-bold">סה"כ לתשלום</span>
-                <span className="text-2xl font-bold" style={{ color: "#8B7040" }}>
-                  {formatCurrency(quote.totalAmount)}
-                </span>
-              </div>
+              {(() => {
+                const subtotal = quote.items.reduce((acc, item) => acc + (item.totalPrice || 0), 0);
+                const vat = subtotal * 0.18;
+                const totalWithVat = subtotal + vat;
+                return (
+                  <div>
+                    <div className="flex justify-between items-center text-sm mb-1">
+                      <span className="text-gray-600">מחיר לפני מע"מ</span>
+                      <span className="font-medium">{formatCurrency(subtotal)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm mb-3">
+                      <span className="text-gray-600">מע"מ (18%)</span>
+                      <span className="font-medium">{formatCurrency(vat)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-bold">סה"כ אחרי מע"מ</span>
+                      <span className="text-2xl font-bold" style={{ color: "#8B7040" }}>
+                        {formatCurrency(totalWithVat)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
