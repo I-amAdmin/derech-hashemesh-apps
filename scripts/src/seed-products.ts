@@ -1,0 +1,460 @@
+import { db, productsTable } from "@workspace/db";
+
+type SizeFields = {
+  weightKg: string;
+  pricePerKg: string;
+  sizeSmall: string | null;
+  sizeMedium: string | null;
+  sizeLarge: string | null;
+  weightOrAmount: string | null;
+};
+
+type RawProduct = {
+  description: string;
+  department: string;
+} & SizeFields;
+
+function s3(small: string | null, medium: string | null, large: string | null, medGrams: number): SizeFields {
+  return {
+    weightKg: (medGrams / 1000).toFixed(3),
+    pricePerKg: "0",
+    sizeSmall: small,
+    sizeMedium: medium,
+    sizeLarge: large,
+    weightOrAmount: medium ?? small ?? large ?? null,
+  };
+}
+
+function s1(grams: number, label?: string): SizeFields {
+  return {
+    weightKg: (grams / 1000).toFixed(3),
+    pricePerKg: "0",
+    sizeSmall: null,
+    sizeMedium: null,
+    sizeLarge: null,
+    weightOrAmount: label ?? `${grams} גרם`,
+  };
+}
+
+const rawProducts: RawProduct[] = [
+  // ==================== פיצוחים קלויים ====================
+  { description: "גרעיני אבטיח קלויים תנור", department: "פיצוחים קלויים", ...s3("150 גרם", "220 גרם", "450 גרם", 220) },
+  { description: "גרעיני אבטיח קלויים מחבת", department: "פיצוחים קלויים", ...s3("150 גרם", "220 גרם", "450 גרם", 220) },
+  { description: "שקד חסן אקסטרא קלוי", department: "פיצוחים קלויים", ...s3("150 גרם", "280 גרם", "550 גרם", 280) },
+  { description: "שקד חסן אקסטרא קלוי ללא מלח", department: "פיצוחים קלויים", ...s3("150 גרם", "280 גרם", "550 גרם", 280) },
+  { description: "שקד חסן ביוני קלוי", department: "פיצוחים קלויים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "שקד בקליפה קלוי", department: "פיצוחים קלויים", ...s3("100 גרם", "140 גרם", "330 גרם", 140) },
+  { description: "פיסטוק קלוי", department: "פיצוחים קלויים", ...s3("130 גרם", "200 גרם", "420 גרם", 200) },
+  { description: "פיסטוק קלוי ללא מלח", department: "פיצוחים קלויים", ...s3("120 גרם", "200 גרם", "430 גרם", 200) },
+  { description: "קשיו קלוי", department: "פיצוחים קלויים", ...s3("150 גרם", "250 גרם", "550 גרם", 250) },
+  { description: "קשיו קלוי ללא מלח", department: "פיצוחים קלויים", ...s3("170 גרם", "250 גרם", "530 גרם", 250) },
+  { description: "קשיו קלוי בקליפה", department: "פיצוחים קלויים", ...s3("150 גרם", "220 גרם", "450 גרם", 220) },
+  { description: "קשיו זעתר", department: "פיצוחים קלויים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "קשיו שום", department: "פיצוחים קלויים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "גרעיני מלון קלויים", department: "פיצוחים קלויים", ...s3("130 גרם", "200 גרם", "400 גרם", 200) },
+  { description: "גרעיני חמניה קלויים", department: "פיצוחים קלויים", ...s3(null, "130 גרם", "300 גרם", 130) },
+  { description: "גרעיני חמניה קלויים ללא מלח", department: "פיצוחים קלויים", ...s3("90 גרם", "150 גרם", "300 גרם", 150) },
+  { description: "גרעיני חמניה קלויים אקסטרא מלח", department: "פיצוחים קלויים", ...s3(null, "130 גרם", "300 גרם", 130) },
+  { description: "גרעיני חמניה קלייה כורדית", department: "פיצוחים קלויים", ...s3(null, "130 גרם", "300 גרם", 130) },
+  { description: "גרעינים לבנים קלויים", department: "פיצוחים קלויים", ...s3(null, "180 גרם", "370 גרם", 180) },
+  { description: "גרעינים לבנים קלויים ללא מלח", department: "פיצוחים קלויים", ...s3("110 גרם", "170 גרם", "350 גרם", 170) },
+  { description: "אגוז לוז קלוי", department: "פיצוחים קלויים", ...s3("150 גרם", "250 גרם", "500 גרם", 250) },
+  { description: "אגוז לוז חום קלוי ללא מלח", department: "פיצוחים קלויים", ...s3("170 גרם", "250 גרם", "500 גרם", 250) },
+  { description: "אגוז מקדמיה קלוי", department: "פיצוחים קלויים", ...s3("150 גרם", "250 גרם", "500 גרם", 250) },
+  { description: "מיקס פיצוחים", department: "פיצוחים קלויים", ...s3("150 גרם", "230 גרם", "400 גרם", 230) },
+  { description: "פקאן קלוי", department: "פיצוחים קלויים", ...s3("130 גרם", "200 גרם", "400 גרם", 200) },
+  { description: "פקאן קלוי ללא מלח", department: "פיצוחים קלויים", ...s3("130 גרם", "200 גרם", "400 גרם", 200) },
+  { description: "פקאן בקליפה קלוי", department: "פיצוחים קלויים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "בוטן ג16 קלוי", department: "פיצוחים קלויים", ...s3("170 גרם", "250 גרם", "600 גרם", 250) },
+  { description: "בוטן קלוי ג16 ללא מלח", department: "פיצוחים קלויים", ...s3("150 גרם", "250 גרם", "520 גרם", 250) },
+  { description: "בוטן ג14 קלוי", department: "פיצוחים קלויים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "בוטן בקליפה קלוי", department: "פיצוחים קלויים", ...s3("80 גרם", "120 גרם", "200 גרם", 120) },
+  { description: "בוטן פרמיום מולבן קלוי", department: "פיצוחים קלויים", ...s3("170 גרם", "280 גרם", "550 גרם", 280) },
+  { description: "בוטן אמריקאי קלוי", department: "פיצוחים קלויים", ...s3("180 גרם", "280 גרם", "550 גרם", 280) },
+  { description: "רביולי גריל", department: "פיצוחים קלויים", ...s3("130 גרם", "200 גרם", "420 גרם", 200) },
+  { description: "קבוקים", department: "פיצוחים קלויים", ...s3("120 גרם", "200 גרם", "400 גרם", 200) },
+  { description: "חומוס קלוי", department: "פיצוחים קלויים", ...s3("150 גרם", "250 גרם", "480 גרם", 250) },
+  { description: "מייאסי שום", department: "פיצוחים קלויים", ...s3("150 גרם", "220 גרם", "450 גרם", 220) },
+  { description: "עבאדי גריל", department: "פיצוחים קלויים", ...s3("120 גרם", "200 גרם", "400 גרם", 200) },
+  { description: "עבאדי טבעי", department: "פיצוחים קלויים", ...s3("120 גרם", "200 גרם", "400 גרם", 200) },
+  { description: "עבאדי פיקנטי", department: "פיצוחים קלויים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "מנצס ספרדי", department: "פיצוחים קלויים", ...s3("110 גרם", "150 גרם", "350 גרם", 150) },
+  { description: "מיקס מנצס סיני", department: "פיצוחים קלויים", ...s3("100 גרם", "150 גרם", "320 גרם", 150) },
+  { description: "מיקס מנצס ללא גלוטן", department: "פיצוחים קלויים", ...s3("90 גרם", "150 גרם", "250 גרם", 150) },
+  { description: "קרקר אזוקי", department: "פיצוחים קלויים", ...s3("50 גרם", "70 גרם", "150 גרם", 70) },
+  { description: "קרקר פלפל שחור", department: "פיצוחים קלויים", ...s1(100, undefined), weightOrAmount: null },
+  { description: "אגוזי מלך קלויים", department: "פיצוחים קלויים", ...s3(null, "170 גרם", null, 170) },
+  { description: "פול קלוי ממולח", department: "פיצוחים קלויים", ...s3("130 גרם", "200 גרם", "400 גרם", 200) },
+  { description: "אפונה קלויה", department: "פיצוחים קלויים", ...s3("140 גרם", "200 גרם", "450 גרם", 200) },
+  { description: "אפונה ווסאבי", department: "פיצוחים קלויים", ...s3("130 גרם", "230 גרם", "470 גרם", 230) },
+  { description: "סויה קריספי", department: "פיצוחים קלויים", ...s3("90 גרם", "150 גרם", "300 גרם", 150) },
+  { description: "חטיף ירקות קלויים", department: "פיצוחים קלויים", ...s3(null, "120 גרם", "230 גרם", 120) },
+  { description: "חריף תאילנדי", department: "פיצוחים קלויים", ...s3("70 גרם", "100 גרם", "230 גרם", 100) },
+  { description: "ריזוטו מתוק", department: "פיצוחים קלויים", ...s3("55 גרם", "80 גרם", "170 גרם", 80) },
+  { description: "אדממה / פרוטאין חלבון", department: "פיצוחים קלויים", ...s3("130 גרם", "200 גרם", "380 גרם", 200) },
+  { description: "תירס קלוי", department: "פיצוחים קלויים", ...s3("110 גרם", "170 גרם", "350 גרם", 170) },
+  { description: "בוטן קטציג חריף", department: "פיצוחים קלויים", ...s1(150, undefined), weightOrAmount: null },
+
+  // ==================== ממתקים ומצופים ====================
+  { description: "פקאן סיני מקורמל", department: "ממתקים ומצופים", ...s3("150 גרם", "240 גרם", "500 גרם", 240) },
+  { description: "פקאן בצפוי קקאו שוקולד", department: "ממתקים ומצופים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "פקאן בצפוי אוראו", department: "ממתקים ומצופים", ...s3("200 גרם", "300 גרם", "620 גרם", 300) },
+  { description: "פקאן בצפוי לוטוס", department: "ממתקים ומצופים", ...s3("200 גרם", "300 גרם", "650 גרם", 300) },
+  { description: "פקאן בצפוי דובאי", department: "ממתקים ומצופים", ...s3("200 גרם", "300 גרם", "650 גרם", 300) },
+  { description: "פקאן בצפוי פיסטוק", department: "ממתקים ומצופים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "פקאן פרצעל", department: "ממתקים ומצופים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "פקאן בצפוי חלבה", department: "ממתקים ומצופים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "פקאן מצופה קקאו חלבי", department: "ממתקים ומצופים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "תפוז מצופה שוקולד מריר", department: "ממתקים ומצופים", ...s3(null, "230 גרם", null, 230) },
+  { description: "קוקוס מצופה שוקולד מריר", department: "ממתקים ומצופים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "בוטן מצופה שוקולד מריר", department: "ממתקים ומצופים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "תות מצופה שוקולד מריר", department: "ממתקים ומצופים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "בננה מצופה שוקולד מריר", department: "ממתקים ומצופים", ...s1(200, undefined), weightOrAmount: null },
+
+  // ==================== פירות יבשים ====================
+  { description: "תמר מג'אול סופר ג'מבו", department: "פירות יבשים", ...s3("170 גרם", "250 גרם", "550 גרם", 250) },
+  { description: "תמר דקל נור", department: "פירות יבשים", ...s3("170 גרם", "280 גרם", "580 גרם", 280) },
+  { description: "תמר דומים ללא תוספת סוכר", department: "פירות יבשים", ...s3("100 גרם", "150 גרם", "320 גרם", 150) },
+  { description: "חמוציות שלמות ללא תוספת סוכר", department: "פירות יבשים", ...s3("150 גרם", "220 גרם", "470 גרם", 220) },
+  { description: "חמוציות חתוך מתוק", department: "פירות יבשים", ...s3("150 גרם", "250 גרם", "550 גרם", 250) },
+  { description: "חמוציות טבעי חתוך ברכז תפוחים", department: "פירות יבשים", ...s3("150 גרם", "250 גרם", "550 גרם", 250) },
+  { description: "בננה צ'יפס", department: "פירות יבשים", ...s3("100 גרם", "170 גרם", "330 גרם", 170) },
+  { description: "בננה רצועות ללא תוספת סוכר אורגני", department: "פירות יבשים", ...s3("100 גרם", "170 גרם", "300 גרם", 170) },
+  { description: "גינגר מיובש ללא תוספת סוכר", department: "פירות יבשים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "צימוק אזוקי שחור ללא תוספת סוכר", department: "פירות יבשים", ...s3("180 גרם", "280 גרם", "550 גרם", 280) },
+  { description: "צימוק ירוק פרסי ללא תוספת סוכר", department: "פירות יבשים", ...s3("100 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "צימוק גדול", department: "פירות יבשים", ...s3("200 גרם", "300 גרם", "730 גרם", 300) },
+  { description: "צימוק קטן כהה", department: "פירות יבשים", ...s3("170 גרם", "270 גרם", "500 גרם", 270) },
+  { description: "צימוק קטן בהיר", department: "פירות יבשים", ...s3("170 גרם", "280 גרם", "600 גרם", 280) },
+  { description: "שזיף ללא חרצן", department: "פירות יבשים", ...s3("200 גרם", "350 גרם", "700 גרם", 350) },
+  { description: "שזיף עם חרצן", department: "פירות יבשים", ...s3("220 גרם", "350 גרם", "740 גרם", 350) },
+  { description: "שזיף אלוצה שחור ללא תוספת סוכר", department: "פירות יבשים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "שזיף אלוצה צהוב ללא תוספת סוכר", department: "פירות יבשים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "גוגי ברי ללא תוספת סוכר", department: "פירות יבשים", ...s1(150, undefined), weightOrAmount: null },
+  { description: "גולדן ברי ללא תוספת סוכר", department: "פירות יבשים", ...s3("150 גרם", "250 גרם", "500 גרם", 250) },
+  { description: "משמש מתוק", department: "פירות יבשים", ...s3("200 גרם", "370 גרם", "700 גרם", 370) },
+  { description: "משמש אוזביקי ללא תוספת סוכר", department: "פירות יבשים", ...s3("250 גרם", "370 גרם", "600 גרם", 370) },
+  { description: "משמש חום אורגני ללא תוספת סוכר", department: "פירות יבשים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "קוקוס מיובש טבעי ללא תוספת סוכר", department: "פירות יבשים", ...s3("80 גרם", "140 גרם", "250 גרם", 140) },
+  { description: "תפוח עץ טבעי ללא תוספת סוכר", department: "פירות יבשים", ...s3("120 גרם", "170 גרם", "400 גרם", 170) },
+  { description: "תפוז מיובש עגול מסוכר", department: "פירות יבשים", ...s3("130 גרם", "200 גרם", "400 גרם", 200) },
+  { description: "תפוז מיובש רצועות מסוכר", department: "פירות יבשים", ...s3("140 גרם", "200 גרם", "400 גרם", 200) },
+  { description: "תפוז מיובש טבעי ללא תוספת סוכר", department: "פירות יבשים", ...s1(150, undefined), weightOrAmount: null },
+  { description: "קיווי מיובש", department: "פירות יבשים", ...s1(100, undefined), weightOrAmount: null },
+  { description: "פפאיה רצועות", department: "פירות יבשים", ...s3(null, "250 גרם", "420 גרם", 250) },
+  { description: "תפוח בצפוי קינמון", department: "פירות יבשים", ...s3("150 גרם", "270 גרם", "530 גרם", 270) },
+  { description: "אננס טבעות ממותק", department: "פירות יבשים", ...s3("170 גרם", "220 גרם", "500 גרם", 220) },
+  { description: "אננס טבעי ללא תוספת סוכר", department: "פירות יבשים", ...s3("150 גרם", "220 גרם", "450 גרם", 220) },
+  { description: "מנגו מיובש טבעי ללא תוספת סוכר", department: "פירות יבשים", ...s3("120 גרם", "170 גרם", "350 גרם", 170) },
+  { description: "מנגו מיובש דל סוכר", department: "פירות יבשים", ...s1(150, undefined), weightOrAmount: null },
+  { description: "תאנים בעונה", department: "פירות יבשים", ...s3(null, "280 גרם", null, 280) },
+  { description: "אוכמניות קטנות", department: "פירות יבשים", ...s3("160 גרם", "250 גרם", "530 גרם", 250) },
+  { description: "אוכמניות בלו ברי ללא תוספת סוכר", department: "פירות יבשים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "דובדבן אדום בסירופ", department: "פירות יבשים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "דובדבן שלם ללא תוספת סוכר", department: "פירות יבשים", ...s3("200 גרם", "330 גרם", "650 גרם", 330) },
+
+  // ==================== תבלינים ====================
+  { description: "פלפל שחור", department: "תבלינים", ...s1(150) },
+  { description: "פלפל שחור גרוס", department: "תבלינים", ...s1(150) },
+  { description: "תיבול לירקות בתנור", department: "תבלינים", ...s1(180) },
+  { description: "תערובת פרצעל לחלות", department: "תבלינים", ...s1(150) },
+  { description: "שום שמיר", department: "תבלינים", ...s1(150) },
+  { description: "תיבול לצ'יפס", department: "תבלינים", ...s1(180) },
+  { description: "תערובת מיכאלה", department: "תבלינים", ...s1(150) },
+  { description: "פפריקה מתוקה", department: "תבלינים", ...s1(130) },
+  { description: "פפריקה מתוקה בשמן", department: "תבלינים", ...s1(130) },
+  { description: "פפריקה חריפה", department: "תבלינים", ...s1(130) },
+  { description: "פפריקה חריפה בשמן", department: "תבלינים", ...s1(130) },
+  { description: "פפריקה מעושנת", department: "תבלינים", ...s1(130) },
+  { description: "גריל עוף", department: "תבלינים", ...s1(150) },
+  { description: "גריל דג", department: "תבלינים", ...s1(150) },
+  { description: "תיבול לפרגית", department: "תבלינים", ...s1(150) },
+  { description: "כורכום", department: "תבלינים", ...s1(140) },
+  { description: "כמון טחון", department: "תבלינים", ...s1(150) },
+  { description: "חוויג למרק", department: "תבלינים", ...s1(120) },
+  { description: "תיבול פילדלפיה", department: "תבלינים", ...s1(150) },
+  { description: "טוסקנה", department: "תבלינים", ...s1(180) },
+  { description: "מונטריאול", department: "תבלינים", ...s1(150) },
+  { description: "מרק עוף", department: "תבלינים", ...s1(150) },
+  { description: "צ'ילי גרוס", department: "תבלינים", ...s1(100) },
+  { description: "צ'ילי מתוק", department: "תבלינים", ...s1(100) },
+  { description: "כוסברה טחונה", department: "תבלינים", ...s1(90) },
+  { description: "פלפל אנגלי טחון", department: "תבלינים", ...s1(120) },
+  { description: "גראמסלה", department: "תבלינים", ...s1(150) },
+  { description: "קינמון טחון", department: "תבלינים", ...s1(120) },
+  { description: "שווארמה", department: "תבלינים", ...s1(150) },
+  { description: "תיבול לקבב מזרחי", department: "תבלינים", ...s1(150) },
+  { description: "תיבול לקציצות", department: "תבלינים", ...s1(150) },
+  { description: "קארי הודי צהוב", department: "תבלינים", ...s1(170) },
+  { description: "ראס אל חנות", department: "תבלינים", ...s1(130) },
+  { description: "תערובת פלפל לימון", department: "תבלינים", ...s1(150) },
+  { description: "רוזמרין", department: "תבלינים", ...s1(50, undefined), weightOrAmount: null },
+  { description: "טימין", department: "תבלינים", ...s1(60) },
+  { description: "שמיר מיובש", department: "תבלינים", ...s1(70) },
+  { description: "קייגון", department: "תבלינים", ...s1(150) },
+  { description: "משיה", department: "תבלינים", ...s1(120) },
+  { description: "קצח", department: "תבלינים", ...s1(150) },
+  { description: "שום מעושן", department: "תבלינים", ...s1(150) },
+  { description: "שום גבישי", department: "תבלינים", ...s1(150) },
+  { description: "בצל מטוגן", department: "תבלינים", ...s1(80) },
+  { description: "בצל שבבים", department: "תבלינים", ...s1(40) },
+  { description: "מלח ים אפור אטלנטי", department: "תבלינים", ...s1(250) },
+  { description: "מלח לסטייק שמש", department: "תבלינים", ...s1(200) },
+  { description: "מלח הימלאיה דק", department: "תבלינים", ...s1(250) },
+  { description: "מלח הימלאיה גס", department: "תבלינים", ...s1(250) },
+  { description: "תבלין אדגיקה שמש", department: "תבלינים", ...s1(100) },
+  { description: "מלח מתובל שום שמיר", department: "תבלינים", ...s1(150, undefined), weightOrAmount: null },
+  { description: "מלח שחור", department: "תבלינים", ...s1(250) },
+  { description: "מלח מתובל גרידת לימון", department: "תבלינים", ...s1(150, undefined), weightOrAmount: null },
+  { description: "מלח מתובל גרידת תפוז", department: "תבלינים", ...s1(150, undefined), weightOrAmount: null },
+  { description: "בהרט", department: "תבלינים", ...s1(140) },
+  { description: "אבקת בצל", department: "תבלינים", ...s1(100) },
+  { description: "זעתר דרך השמש", department: "תבלינים", ...s1(130) },
+  { description: "צנוברים", department: "תבלינים", ...s1(150) },
+
+  // ==================== תערובות לאורז ====================
+  { description: "תערובת לאורז מגדרה", department: "תערובות לאורז", ...s3("130 גרם", "200 גרם", "430 גרם", 200) },
+  { description: "תערובת לאורז בחש", department: "תערובות לאורז", ...s3("100 גרם", "190 גרם", "350 גרם", 190) },
+  { description: "תערובת לאורז הודי", department: "תערובות לאורז", ...s3("150 גרם", "250 גרם", "500 גרם", 250) },
+  { description: "תערובת לאורז חגיגי", department: "תערובות לאורז", ...s3("150 גרם", "200 גרם", "450 גרם", 200) },
+  { description: "תערובת לאורז עיראקי", department: "תערובות לאורז", ...s1(200, undefined), weightOrAmount: null },
+  { description: "תערובת לאורז אוריאן שמש", department: "תערובות לאורז", ...s3(null, "300 גרם", "600 גרם", 300) },
+
+  // ==================== גרנולה ====================
+  { description: "גרנולות ללא סוכר דרך השמש", department: "גרנולה", ...s3("180 גרם", "280 גרם", "570 גרם", 280) },
+  { description: "גרנולות ללא סוכר בתוספת חלבה", department: "גרנולה", ...s3("180 גרם", "280 גרם", "570 גרם", 280) },
+  { description: "גרנולת אגוזים ללא תוספת סוכר", department: "גרנולה", ...s3("170 גרם", "270 גרם", "550 גרם", 270) },
+  { description: "גרנולת אגוזים עם פירות יבשים ללא תוספת סוכר", department: "גרנולה", ...s3("200 גרם", "270 גרם", "570 גרם", 270) },
+  { description: "געלה לסלט דרך השמש", department: "גרנולה", ...s3(null, "300 גרם", "600 גרם", 300) },
+
+  // ==================== אגוזים טבעיים ====================
+  { description: "אגוז מלך 90% חצאים", department: "אגוזים טבעיים", ...s3("100 גרם", "170 גרם", "350 גרם", 170) },
+  { description: "אגוז מלך 40% חצאים", department: "אגוזים טבעיים", ...s3("100 גרם", "170 גרם", "350 גרם", 170) },
+  { description: "אגוז מלך 20% חצאים", department: "אגוזים טבעיים", ...s3("100 גרם", "170 גרם", "350 גרם", 170) },
+  { description: "אגוז עם קליפה", department: "אגוזים טבעיים", ...s1(500) },
+  { description: "מקדמיה עם קליפה", department: "אגוזים טבעיים", ...s1(500) },
+  { description: "שקד אמריקאי", department: "אגוזים טבעיים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "שקד ישראלי", department: "אגוזים טבעיים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "שקד עם קליפה", department: "אגוזים טבעיים", ...s1(500) },
+  { description: "חמניה עם קליפה טבעי", department: "אגוזים טבעיים", ...s3("100 גרם", "200 גרם", "360 גרם", 200) },
+  { description: "גרעיני חמניה קלופים", department: "אגוזים טבעיים", ...s3("150 גרם", "300 גרם", "550 גרם", 300) },
+  { description: "גרעינים לבנים טבעיים", department: "אגוזים טבעיים", ...s3("140 גרם", "180 גרם", "450 גרם", 180) },
+  { description: "גרעיני דלעת קלופים", department: "אגוזים טבעיים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "גרעיני מלון טבעי", department: "אגוזים טבעיים", ...s3("150 גרם", "230 גרם", "450 גרם", 230) },
+  { description: "אגוז לוז חום טבעי", department: "אגוזים טבעיים", ...s3("180 גרם", "270 גרם", "550 גרם", 270) },
+  { description: "אגוז לוז טבעי לבן", department: "אגוזים טבעיים", ...s3("180 גרם", "270 גרם", "550 גרם", 270) },
+  { description: "פיסטוק חלבי מקולף שלם", department: "אגוזים טבעיים", ...s3("170 גרם", "270 גרם", "570 גרם", 270) },
+  { description: "פיסטוק חלבי טבעי", department: "אגוזים טבעיים", ...s3("150 גרם", "200 גרם", "450 גרם", 200) },
+  { description: "קשיו גדול טבעי", department: "אגוזים טבעיים", ...s3("170 גרם", "270 גרם", "570 גרם", 270) },
+  { description: "קשיו שבור טבעי", department: "אגוזים טבעיים", ...s3("170 גרם", "280 גרם", "550 גרם", 280) },
+  { description: "פקאן ממותק מקולף טבעי", department: "אגוזים טבעיים", ...s3("120 גרם", "200 גרם", "400 גרם", 200) },
+  { description: "פקאן בקליפה טבעי", department: "אגוזים טבעיים", ...s1(500) },
+  { description: "בוטן טבעי ג16", department: "אגוזים טבעיים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "בוטן טבעי ג14", department: "אגוזים טבעיים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "אגוז מקדמיה שלם טבעי", department: "אגוזים טבעיים", ...s3("160 גרם", "250 גרם", "600 גרם", 250) },
+  { description: "אגוז מקדמיה חצאים", department: "אגוזים טבעיים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "שקד מולבן שלם", department: "אגוזים טבעיים", ...s3("200 גרם", "300 גרם", "600 גרם", 300) },
+  { description: "שקד מולבן חצאים", department: "אגוזים טבעיים", ...s3("180 גרם", "300 גרם", "550 גרם", 300) },
+  { description: "שקד מולבן גפרורים", department: "אגוזים טבעיים", ...s3("170 גרם", "250 גרם", "520 גרם", 250) },
+  { description: "שקד מולבן פרוס", department: "אגוזים טבעיים", ...s3("150 גרם", "220 גרם", "450 גרם", 220) },
+  { description: "שקד מולבן טחון", department: "אגוזים טבעיים", ...s3("150 גרם", "230 גרם", "430 גרם", 230) },
+  { description: "אגוזי ברזיל", department: "אגוזים טבעיים", ...s3("180 גרם", "300 גרם", "580 גרם", 300) },
+
+  // ==================== קטניות ודגנים ====================
+  { description: "שיבולת שועל עבה", department: "קטניות ודגנים", ...s3("150 גרם", "230 גרם", "470 גרם", 230) },
+  { description: "שיבולת שועל דקה", department: "קטניות ודגנים", ...s3("120 גרם", "190 גרם", "380 גרם", 190) },
+  { description: "שיבולת שועל מלאה", department: "קטניות ודגנים", ...s3("150 גרם", "230 גרם", "450 גרם", 230) },
+  { description: "פול יבש גדול", department: "קטניות ודגנים", ...s3("200 גרם", "300 גרם", "550 גרם", 300) },
+  { description: "פול מצרי קטן", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "שעועית ארגנטינאית לבנה", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "שעועית אדומה", department: "קטניות ודגנים", ...s3("220 גרם", "350 גרם", "700 גרם", 350) },
+  { description: "שעועית אזוקי", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "830 גרם", 400) },
+  { description: "שעועית שחורה", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "830 גרם", 400) },
+  { description: "שעועית בובס", department: "קטניות ודגנים", ...s3("200 גרם", "350 גרם", "700 גרם", 350) },
+  { description: "שעועית לוביה", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "830 גרם", 400) },
+  { description: "עדשים אדומות שלמות", department: "קטניות ודגנים", ...s3("250 גרם", "430 גרם", "830 גרם", 430) },
+  { description: "עדשים ירוקות", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "עדשים שחורות", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "850 גרם", 400) },
+  { description: "קינואה לבנה", department: "קטניות ודגנים", ...s3("200 גרם", "350 גרם", "770 גרם", 350) },
+  { description: "קינואה אדומה", department: "קטניות ודגנים", ...s3("230 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "כוסמת בהירה", department: "קטניות ודגנים", ...s3("230 גרם", "370 גרם", "740 גרם", 370) },
+  { description: "כוסמת חומה", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "בורגול עבה", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "בורגול בינוני", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "בורגול דק", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "גרישה", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "גרעיני פופקורן אמריקאי", department: "קטניות ודגנים", ...s3("230 גרם", "400 גרם", "850 גרם", 400) },
+  { description: "גרעיני פופקורן שבור", department: "קטניות ודגנים", ...s1(300, undefined), weightOrAmount: null },
+  { description: "אפונה צהובה", department: "קטניות ודגנים", ...s3("180 גרם", "420 גרם", "800 גרם", 420) },
+  { description: "אפונה ירוקה", department: "קטניות ודגנים", ...s3("250 גרם", "420 גרם", "850 גרם", 420) },
+  { description: "חומוס מקסיקו גדול", department: "קטניות ודגנים", ...s3("220 גרם", "370 גרם", "720 גרם", 370) },
+  { description: "חומוס בולגרי", department: "קטניות ודגנים", ...s3("220 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "חומוס הדס", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "חיטה", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "850 גרם", 400) },
+  { description: "פריקי", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "גריסי פנינה", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "800 גרם", 400) },
+  { description: "דוחן", department: "קטניות ודגנים", ...s3("250 גרם", "400 גרם", "850 גרם", 400) },
+  { description: "שומשום מלא אדום", department: "קטניות ודגנים", ...s3("200 גרם", "300 גרם", "500 גרם", 300) },
+  { description: "שומשום לבן", department: "קטניות ודגנים", ...s3("200 גרם", "380 גרם", "750 גרם", 380) },
+  { description: "שומשום שחור", department: "קטניות ודגנים", ...s1(200, undefined), weightOrAmount: null },
+  { description: "פישתן", department: "קטניות ודגנים", ...s3("200 גרם", "330 גרם", "650 גרם", 330) },
+  { description: "זרעי ציה", department: "קטניות ודגנים", ...s3("180 גרם", "280 גרם", "600 גרם", 280) },
+
+  // ==================== אורז ====================
+  { description: "אורז יסמין 5 ק\"ג", department: "אורז", ...s1(5000, "5 ק\"ג") },
+  { description: "אורז שהארזר 5 ק\"ג", department: "אורז", ...s1(5000, "5 ק\"ג") },
+  { description: "אורז בסמטי שוחה 5 ק\"ג", department: "אורז", ...s1(5000, "5 ק\"ג") },
+  { description: "אורז בסמטי טלס 5 ק\"ג", department: "אורז", ...s1(5000, "5 ק\"ג") },
+  { description: "אורז בסמטי ירוק 5 ק\"ג", department: "אורז", ...s1(5000, "5 ק\"ג") },
+  { description: "אורז פרסי 1 ק\"ג", department: "אורז", ...s1(1000, "1 ק\"ג") },
+  { description: "אורז שחור 1 ק\"ג", department: "אורז", ...s1(1000, "1 ק\"ג") },
+  { description: "אורז אדום 1 ק\"ג", department: "אורז", ...s1(1000, "1 ק\"ג") },
+  { description: "אורז מלא 1 ק\"ג", department: "אורז", ...s1(1000, "1 ק\"ג") },
+  { description: "אורז פרא 1 ק\"ג", department: "אורז", ...s1(1000, "1 ק\"ג") },
+  { description: "אורז בסמטי 1 ק\"ג", department: "אורז", ...s1(1000, "1 ק\"ג") },
+  { description: "אורז יסמין 1 ק\"ג", department: "אורז", ...s1(1000, "1 ק\"ג") },
+
+  // ==================== פולי קפה ====================
+  { description: "פולי קפה ערביקה", department: "קפה", ...s1(1000, "1 ק\"ג") },
+  { description: "פולי קפה קולומביה", department: "קפה", ...s1(1000, "1 ק\"ג") },
+  { description: "פולי קפה ברזיל", department: "קפה", ...s1(1000, "1 ק\"ג") },
+  { description: "פולי קפה קוסטה ריקה", department: "קפה", ...s1(1000, "1 ק\"ג") },
+  { description: "פולי קפה טורקי", department: "קפה", ...s1(1000, "1 ק\"ג") },
+  { description: "מיקס פולי קפה", department: "קפה", ...s1(1000, "1 ק\"ג") },
+
+  // ==================== תה עלים ====================
+  { description: "חליטה בדואית", department: "תה עלים", ...s1(100, undefined), weightOrAmount: null },
+  { description: "קמומיל / בבונק", department: "תה עלים", ...s1(80, undefined), weightOrAmount: null },
+  { description: "תה ירוק", department: "תה עלים", ...s1(80, undefined), weightOrAmount: null },
+  { description: "תה שחור", department: "תה עלים", ...s1(80, undefined), weightOrAmount: null },
+  { description: "תה ירוק יסמין", department: "תה עלים", ...s1(80, undefined), weightOrAmount: null },
+  { description: "עלי מרווה", department: "תה עלים", ...s1(50, undefined), weightOrAmount: null },
+  { description: "עלי לואיזה", department: "תה עלים", ...s1(50, undefined), weightOrAmount: null },
+  { description: "צאי הודי גרוס", department: "תה עלים", ...s1(80, undefined), weightOrAmount: null },
+  { description: "פקעות ורדים", department: "תה עלים", ...s1(80, undefined), weightOrAmount: null },
+  { description: "עלי ורדים", department: "תה עלים", ...s1(50, undefined), weightOrAmount: null },
+  { description: "עלי סטיבי", department: "תה עלים", ...s1(50, undefined), weightOrAmount: null },
+  { description: "היביסקוס", department: "תה עלים", ...s1(80, undefined), weightOrAmount: null },
+  { description: "שיפופנייק", department: "תה עלים", ...s1(80, undefined), weightOrAmount: null },
+
+  // ==================== חליטות פירות ====================
+  { description: "חליטת תות", department: "חליטות פירות", ...s3("200 גרם", "300 גרם", "550 גרם", 300) },
+  { description: "חליטת סיידר", department: "חליטות פירות", ...s3("170 גרם", "270 גרם", "570 גרם", 270) },
+  { description: "חליטת גן עדן", department: "חליטות פירות", ...s3("180 גרם", "270 גרם", "600 גרם", 270) },
+  { description: "חליטת כורכום גינגר הדרים", department: "חליטות פירות", ...s3("180 גרם", "270 גרם", "600 גרם", 270) },
+  { description: "חליטת תפוח קינמון", department: "חליטות פירות", ...s1(180, undefined), weightOrAmount: null },
+  { description: "חליטת פומלה מלון", department: "חליטות פירות", ...s3("180 גרם", "280 גרם", "600 גרם", 280) },
+  { description: "חליטת פירות יער", department: "חליטות פירות", ...s3("180 גרם", "300 גרם", "630 גרם", 300) },
+  { description: "חליטת לימון נענע", department: "חליטות פירות", ...s3(null, "300 גרם", "600 גרם", 300) },
+
+  // ==================== שמן זית ====================
+  { description: "שמן זית עץ השדה 750 מ\"ל", department: "שמן זית", ...s1(750, "750 מ\"ל") },
+  { description: "שמן זית עץ השדה 2 ליטר", department: "שמן זית", ...s1(2000, "2 ליטר") },
+  { description: "שמן זית עץ השדה 5 ליטר", department: "שמן זית", ...s1(5000, "5 ליטר") },
+
+  // ==================== מגשים ומתוקים ====================
+  { description: "ממתקי גומי", department: "מגשים ומתוקים", ...s1(500) },
+  { description: "בוטן בשוקולד", department: "מגשים ומתוקים", ...s3(null, "1 ק\"ג", "4 ק\"ג", 1000) },
+  { description: "תפוז בשוקולד", department: "מגשים ומתוקים", ...s3(null, "1 ק\"ג", "4 ק\"ג", 1000) },
+  { description: "בננה בשוקולד", department: "מגשים ומתוקים", ...s3(null, "1 ק\"ג", "4 ק\"ג", 1000) },
+  { description: "תות בשוקולד", department: "מגשים ומתוקים", ...s3(null, "1 ק\"ג", "4 ק\"ג", 1000) },
+  { description: "מגש מעמול תמרים", department: "מגשים ומתוקים", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "מגש בקלוואה קן לציפור", department: "מגשים ומתוקים", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "מגש בקלוואה מרוקאי", department: "מגשים ומתוקים", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "מגש כנאפה", department: "מגשים ומתוקים", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "מגש מיקס בקלוואה", department: "מגשים ומתוקים", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "מגש סולט", department: "מגשים ומתוקים", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "מגש חינה מיקס", department: "מגשים ומתוקים", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "מגש קצפיות", department: "מגשים ומתוקים", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "חטיפי מיני ארוז אישי", department: "מגשים ומתוקים", ...s1(500, undefined), weightOrAmount: null },
+  { description: "מגש חטיף אגוזים ירושלמי ללא סוכר", department: "מגשים ומתוקים", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "רחת לוקום אדום", department: "מגשים ומתוקים", ...s3(null, "1 ק\"ג", "4 ק\"ג", 1000) },
+  { description: "רחת לוקום לבן", department: "מגשים ומתוקים", ...s3(null, "1 ק\"ג", "4 ק\"ג", 1000) },
+  { description: "רחת לוקום פיסטוק", department: "מגשים ומתוקים", ...s3(null, "1 ק\"ג", "4 ק\"ג", 1000) },
+  { description: "רחת לוקום שקדים", department: "מגשים ומתוקים", ...s3(null, "1 ק\"ג", "4 ק\"ג", 1000) },
+  { description: "סוכריות דרזה", department: "מגשים ומתוקים", ...s1(1000, "1 ק\"ג") },
+  { description: "סוכריות טופי רכות", department: "מגשים ומתוקים", ...s1(800) },
+  { description: "סוכריות טופי קשות", department: "מגשים ומתוקים", ...s1(800) },
+  { description: "סוכריות דבש", department: "מגשים ומתוקים", ...s1(1000, "1 ק\"ג") },
+  { description: "סוכריות קשות ללא סוכר טעם חמאה", department: "מגשים ומתוקים", ...s1(500) },
+  { description: "סוכריות קשות ללא סוכר טעם קקאו", department: "מגשים ומתוקים", ...s1(500) },
+  { description: "סוכריות קשות ללא סוכר טעם קפה", department: "מגשים ומתוקים", ...s1(500) },
+  { description: "סוכריות קשות ללא סוכר טעם מיקס פירות", department: "מגשים ומתוקים", ...s1(500) },
+  { description: "סוכריות קשות ללא סוכר טעם ליקריץ", department: "מגשים ומתוקים", ...s1(500) },
+  { description: "סוכריות קשות ללא סוכר טעם מנטה", department: "מגשים ומתוקים", ...s1(500) },
+  { description: "סוכריות קשות ללא סוכר טעם מנטה אקליפטוס", department: "מגשים ומתוקים", ...s1(500) },
+
+  // ==================== קיורטושים ====================
+  { description: "קיורטוש קינמון", department: "קיורטושים", ...s1(400, undefined), weightOrAmount: null },
+  { description: "קיורטוש חלבה שוקולד", department: "קיורטושים", ...s1(400, undefined), weightOrAmount: null },
+  { description: "קיורטוש חלבה שקדים", department: "קיורטושים", ...s1(400, undefined), weightOrAmount: null },
+  { description: "קיורטוש נוגט לוז", department: "קיורטושים", ...s1(400, undefined), weightOrAmount: null },
+  { description: "קיורטוש שוקולד וניל", department: "קיורטושים", ...s1(400, undefined), weightOrAmount: null },
+  { description: "רוגעלך קיורטוש", department: "קיורטושים", ...s1(400, undefined), weightOrAmount: null },
+  { description: "עוגת דבש קיורטוש", department: "קיורטושים", ...s1(400, undefined), weightOrAmount: null },
+  { description: "עוגת שוקולד קיורטוש", department: "קיורטושים", ...s1(400, undefined), weightOrAmount: null },
+  { description: "אלפחורס קיורטוש", department: "קיורטושים", ...s1(400, undefined), weightOrAmount: null },
+
+  // ==================== חלווה ====================
+  { description: "חלווה עם קוקוס ללא סוכר איילה", department: "חלווה", ...s1(400) },
+  { description: "חלווה עם שוקולד ללא סוכר איילה", department: "חלווה", ...s1(400) },
+  { description: "חלווה עם וניל ללא סוכר איילה", department: "חלווה", ...s1(400) },
+  { description: "חלווה עם פיסטוק ללא סוכר איילה", department: "חלווה", ...s1(400) },
+  { description: "חלווה עם פקאן ללא סוכר איילה", department: "חלווה", ...s1(400) },
+  { description: "חלווה עם קפה ללא סוכר איילה", department: "חלווה", ...s1(400) },
+  { description: "חלווה שומרונית קקאו הר ברכה", department: "חלווה", ...s1(400) },
+  { description: "חלווה שומנית פיסטוק הר ברכה", department: "חלווה", ...s1(400) },
+  { description: "חלווה שומרנית קלאסי", department: "חלווה", ...s1(400) },
+
+  // ==================== מוצרי אפייה ====================
+  { description: "ג'לטין דגים טהור", department: "מוצרי אפייה", ...s1(1000, "1 ק\"ג") },
+  { description: "אבקת סוכר", department: "מוצרי אפייה", ...s1(1000, "1 ק\"ג") },
+  { description: "אבקת קקאו הולנדי", department: "מוצרי אפייה", ...s1(1000, "1 ק\"ג") },
+  { description: "קורנפלור", department: "מוצרי אפייה", ...s1(1000, "1 ק\"ג") },
+  { description: "שמרים יבשים", department: "מוצרי אפייה", ...s1(500) },
+  { description: "שוקולד לאפייה מריר 55% לובקה", department: "מוצרי אפייה", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "שוקולד לאפייה מריר 60% לובקה", department: "מוצרי אפייה", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "שוקולד לאפייה מריר 70% לובקה", department: "מוצרי אפייה", ...s1(1000, undefined), weightOrAmount: null },
+  { description: "שוקולד לאפייה מריר 85% לובקה", department: "מוצרי אפייה", ...s1(1000, undefined), weightOrAmount: null },
+];
+
+// Assign sequential barcodes
+const products = rawProducts.map((p, i) => ({
+  ...p,
+  barcode: `DH-${String(i + 1).padStart(4, "0")}`,
+}));
+
+async function seedProducts() {
+  console.log(`Inserting ${products.length} products from catalog...`);
+
+  let inserted = 0;
+  let failed = 0;
+
+  for (const product of products) {
+    try {
+      await db.insert(productsTable).values({
+        barcode: product.barcode,
+        description: product.description,
+        weightKg: product.weightKg,
+        pricePerKg: product.pricePerKg,
+        department: product.department,
+        sizeSmall: product.sizeSmall ?? null,
+        sizeMedium: product.sizeMedium ?? null,
+        sizeLarge: product.sizeLarge ?? null,
+        weightOrAmount: product.weightOrAmount ?? null,
+      });
+      inserted++;
+    } catch (err: any) {
+      console.error(`✗ "${product.description}": ${err?.message ?? err}`);
+      failed++;
+    }
+  }
+
+  console.log(`\n✓ Done! Inserted: ${inserted}  Failed: ${failed}`);
+  process.exit(0);
+}
+
+seedProducts().catch((err) => {
+  console.error("Seed failed:", err);
+  process.exit(1);
+});
