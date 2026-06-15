@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { customersTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   CreateCustomerBody,
   UpdateCustomerBody,
@@ -12,7 +12,7 @@ import {
 const router = Router();
 
 router.get("/customers", async (req, res) => {
-  const customers = await db.select().from(customersTable).orderBy(desc(customersTable.createdAt));
+  const customers = await db.select().from(customersTable).orderBy(sql`${customersTable.createdAt} desc`);
   res.json(customers);
 });
 
