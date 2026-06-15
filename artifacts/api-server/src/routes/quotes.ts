@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { productsTable, quotesTable, quoteItemsTable } from "@workspace/db";
-import { eq, desc, sum, count } from "drizzle-orm";
+import { eq, desc, count, sql } from "drizzle-orm";
 import crypto from "crypto";
 import {
   CreateQuoteBody,
@@ -54,7 +54,7 @@ router.get("/quotes/summary", async (req, res) => {
   const [totals] = await db
     .select({
       totalQuotes: count(),
-      totalRevenue: sum(quotesTable.totalAmount),
+      totalRevenue: sql<string>`sum(${quotesTable.totalAmount})`,
     })
     .from(quotesTable);
 
