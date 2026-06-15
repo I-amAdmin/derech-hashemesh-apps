@@ -14,7 +14,7 @@
       "@workspace/api-zod": ["lib/api-zod/src/index.ts"],
       "@workspace/api-zod/*": ["lib/api-zod/src/*"]
             "drizzle-orm": ["../lib/db/node_modules/drizzle-orm"],
-            "drizzle-orm/*": ["../lib/db/node_modules/drizzle-orm/*"],
+            "drizzle-orm/*": ["../lib/db/node_modules/drizzle-orm/*"
     }
   },
   "include": ["."]
