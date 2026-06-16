@@ -74,6 +74,28 @@ const MIGRATIONS: { name: string; sql: string }[] = [
       ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "product_notes" text;
     `,
   },
+  {
+    name: "0002_add_push_tokens",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "push_tokens" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "token" text NOT NULL,
+        "created_at" timestamp DEFAULT now() NOT NULL,
+        CONSTRAINT "push_tokens_token_unique" UNIQUE("token")
+      );
+    `,
+  },
+  {
+    name: "0003_add_quote_item_selected_size",
+    sql: `ALTER TABLE quote_items ADD COLUMN IF NOT EXISTS selected_size TEXT;`,
+  },
+  {
+    name: "0004_add_quote_company_delivery",
+    sql: `
+      ALTER TABLE quotes ADD COLUMN IF NOT EXISTS company_registration TEXT;
+      ALTER TABLE quotes ADD COLUMN IF NOT EXISTS delivery_time TEXT;
+    `,
+  },
 ];
 
 export async function runMigrations(): Promise<void> {

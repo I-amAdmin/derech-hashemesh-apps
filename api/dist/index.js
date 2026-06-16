@@ -20570,7 +20570,7 @@ var require_route = __commonJS({
         sync = 0;
       }
     };
-    Route.prototype.all = function all(handler) {
+    Route.prototype.all = function all(handler2) {
       const callbacks = flatten.call(slice.call(arguments), Infinity);
       if (callbacks.length === 0) {
         throw new TypeError("argument handler is required");
@@ -20588,7 +20588,7 @@ var require_route = __commonJS({
       return this;
     };
     methods.forEach(function(method) {
-      Route.prototype[method] = function(handler) {
+      Route.prototype[method] = function(handler2) {
         const callbacks = flatten.call(slice.call(arguments), Infinity);
         if (callbacks.length === 0) {
           throw new TypeError("argument handler is required");
@@ -20791,17 +20791,17 @@ var require_router = __commonJS({
         }
       }
     };
-    Router8.prototype.use = function use(handler) {
+    Router8.prototype.use = function use(handler2) {
       let offset = 0;
       let path = "/";
-      if (typeof handler !== "function") {
-        let arg = handler;
+      if (typeof handler2 !== "function") {
+        let arg = handler2;
         while (Array.isArray(arg) && arg.length !== 0) {
           arg = arg[0];
         }
         if (typeof arg !== "function") {
           offset = 1;
-          path = handler;
+          path = handler2;
         }
       }
       const callbacks = flatten.call(slice.call(arguments, offset), Infinity);
@@ -32841,7 +32841,7 @@ var require_pg_pool = __commonJS({
         pool2.emit("error", err, client);
       };
     }
-    var Pool4 = class extends EventEmitter {
+    var Pool5 = class extends EventEmitter {
       constructor(options, Client2) {
         super();
         this.options = Object.assign({}, options);
@@ -33208,7 +33208,7 @@ var require_pg_pool = __commonJS({
         return this._clients.length;
       }
     };
-    module2.exports = Pool4;
+    module2.exports = Pool5;
   }
 });
 
@@ -33623,12 +33623,12 @@ var require_lib5 = __commonJS({
     var Connection2 = require_connection();
     var Result2 = require_result();
     var utils = require_utils4();
-    var Pool4 = require_pg_pool();
+    var Pool5 = require_pg_pool();
     var TypeOverrides2 = require_type_overrides();
     var { DatabaseError: DatabaseError2 } = require_dist2();
     var { escapeIdentifier: escapeIdentifier2, escapeLiteral: escapeLiteral2 } = require_utils4();
     var poolFactory = (Client3) => {
-      return class BoundPool extends Pool4 {
+      return class BoundPool extends Pool5 {
         constructor(options) {
           super(options, Client3);
         }
@@ -33683,7 +33683,7 @@ var require_lib5 = __commonJS({
 // api/index.ts
 var api_exports = {};
 __export(api_exports, {
-  default: () => api_default
+  default: () => handler
 });
 module.exports = __toCommonJS(api_exports);
 
@@ -57093,8 +57093,146 @@ app.use(import_express8.default.urlencoded({ extended: true }));
 app.use("/api", routes_default);
 var app_default = app;
 
+// lib/db/src/migrate.ts
+var { Pool: Pool4 } = esm_default;
+var MIGRATIONS = [
+  {
+    name: "0000_initial_schema",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "customers" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "business_name" text NOT NULL,
+        "contact_name" text,
+        "phone" text,
+        "email" text,
+        "created_at" timestamp DEFAULT now() NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "products" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "barcode" text NOT NULL,
+        "description" text NOT NULL,
+        "weight_kg" numeric(10, 3) NOT NULL,
+        "price_per_kg" numeric(10, 2) NOT NULL,
+        "department" text DEFAULT '\u05DB\u05DC\u05DC\u05D9' NOT NULL,
+        "notes" text,
+        "created_at" timestamp DEFAULT now() NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "quotes" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "customer_name" text NOT NULL,
+        "contact_name" text,
+        "customer_phone" text,
+        "email" text,
+        "date" date NOT NULL,
+        "total_amount" numeric(12, 2) DEFAULT '0' NOT NULL,
+        "notes" text,
+        "status" text DEFAULT 'pending' NOT NULL,
+        "share_token" text,
+        "created_at" timestamp DEFAULT now() NOT NULL,
+        CONSTRAINT "quotes_share_token_unique" UNIQUE("share_token")
+      );
+
+      CREATE TABLE IF NOT EXISTS "quote_items" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "quote_id" integer NOT NULL,
+        "product_id" integer,
+        "barcode" text NOT NULL,
+        "description" text NOT NULL,
+        "weight_kg" numeric(10, 3) NOT NULL,
+        "price_per_kg" numeric(10, 2) NOT NULL,
+        "quantity" integer NOT NULL,
+        "total_price" numeric(12, 2) NOT NULL,
+        CONSTRAINT "quote_items_quote_id_fk" FOREIGN KEY ("quote_id") REFERENCES "quotes"("id") ON DELETE cascade,
+        CONSTRAINT "quote_items_product_id_fk" FOREIGN KEY ("product_id") REFERENCES "products"("id") ON DELETE set null
+      );
+    `
+  },
+  {
+    name: "0001_add_schema_columns",
+    sql: `
+      ALTER TABLE "quotes" ADD COLUMN IF NOT EXISTS "customer_note" text;
+      ALTER TABLE "quotes" ADD COLUMN IF NOT EXISTS "viewed_at" timestamp;
+
+      ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "company_id" text;
+      ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "delivery_address" text;
+
+      ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "price_before_vat" numeric(10, 2);
+      ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "price_after_vat" numeric(10, 2);
+      ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "size_small" text;
+      ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "size_medium" text;
+      ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "size_large" text;
+      ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "weight_or_amount" text;
+      ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "product_notes" text;
+    `
+  },
+  {
+    name: "0002_add_push_tokens",
+    sql: `
+      CREATE TABLE IF NOT EXISTS "push_tokens" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "token" text NOT NULL,
+        "created_at" timestamp DEFAULT now() NOT NULL,
+        CONSTRAINT "push_tokens_token_unique" UNIQUE("token")
+      );
+    `
+  },
+  {
+    name: "0003_add_quote_item_selected_size",
+    sql: `ALTER TABLE quote_items ADD COLUMN IF NOT EXISTS selected_size TEXT;`
+  },
+  {
+    name: "0004_add_quote_company_delivery",
+    sql: `
+      ALTER TABLE quotes ADD COLUMN IF NOT EXISTS company_registration TEXT;
+      ALTER TABLE quotes ADD COLUMN IF NOT EXISTS delivery_time TEXT;
+    `
+  }
+];
+async function runMigrations() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL must be set before running migrations");
+  }
+  const pool2 = new Pool4({ connectionString: process.env.DATABASE_URL });
+  try {
+    await pool2.query(`
+      CREATE TABLE IF NOT EXISTS __app_migrations (
+        id serial PRIMARY KEY,
+        name text NOT NULL UNIQUE,
+        applied_at timestamp DEFAULT now() NOT NULL
+      )
+    `);
+    for (const migration of MIGRATIONS) {
+      const { rows } = await pool2.query(
+        "SELECT 1 FROM __app_migrations WHERE name = $1",
+        [migration.name]
+      );
+      if (rows.length === 0) {
+        await pool2.query(migration.sql);
+        await pool2.query(
+          "INSERT INTO __app_migrations (name) VALUES ($1)",
+          [migration.name]
+        );
+      }
+    }
+  } finally {
+    await pool2.end();
+  }
+}
+
 // api/index.ts
-var api_default = app_default;
+var migrationPromise = null;
+async function handler(req, res) {
+  if (!migrationPromise) {
+    migrationPromise = runMigrations().catch((err) => {
+      migrationPromise = null;
+      throw err;
+    });
+  }
+  await migrationPromise;
+  app_default(req, res);
+}
 /*! Bundled license information:
 
 depd/index.js:
