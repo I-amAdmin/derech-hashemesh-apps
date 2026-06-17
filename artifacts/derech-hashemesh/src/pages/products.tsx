@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Layout } from "@/components/layout";
 import {
   useListProducts,
@@ -49,7 +49,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Plus, Pencil, Trash2, Search, Package, ChevronDown, ChevronUp, ShoppingCart, X, FileText, PlusCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Package, ChevronDown, ChevronUp, ShoppingCart, X, FileText, PlusCircle, Check, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -96,6 +96,60 @@ export default function Products() {
   const updateProduct = useUpdateProduct();
   const deleteProduct = useDeleteProduct();
   const updateQuote = useUpdateQuote();
+
+  const [editingPriceId, setEditingPriceId] = useState<number | null>(null);
+  const [priceEditAfterVat, setPriceEditAfterVat] = useState<string>("");
+  const [priceEditBeforeVat, setPriceEditBeforeVat] = useState<string>("");
+  const [savingPriceId, setSavingPriceId] = useState<number | null>(null);
+
+  const startPriceEdit = (product: any) => {
+    const afterVat = product.priceAfterVat != null
+      ? Number(product.priceAfterVat)
+      : product.priceBeforeVat != null
+        ? Number(product.priceBeforeVat) * (1 + VAT_RATE)
+        : null;
+    const beforeVat = product.priceBeforeVat != null
+      ? Number(product.priceBeforeVat)
+      : product.priceAfterVat != null
+        ? Number(product.priceAfterVat) / (1 + VAT_RATE)
+        : null;
+    setPriceEditAfterVat(afterVat != null ? afterVat.toFixed(2) : "");
+    setPriceEditBeforeVat(beforeVat != null ? beforeVat.toFixed(2) : "");
+    setEditingPriceId(product.id);
+  };
+
+  const cancelPriceEdit = () => {
+    setEditingPriceId(null);
+    setPriceEditAfterVat("");
+    setPriceEditBeforeVat("");
+  };
+
+  const savePriceEdit = (product: any) => {
+    const afterVat = parseFloat(priceEditAfterVat);
+    const beforeVat = parseFloat(priceEditBeforeVat);
+    if (isNaN(afterVat) && isNaN(beforeVat)) return;
+
+    setSavingPriceId(product.id);
+    updateProduct.mutate(
+      {
+        id: product.id,
+        data: {
+          priceAfterVat: isNaN(afterVat) ? undefined : afterVat,
+          priceBeforeVat: isNaN(beforeVat) ? undefined : beforeVat,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetProductStatsQueryKey() });
+          cancelPriceEdit();
+          toast({ title: "המחיר עודכן בהצלחה" });
+        },
+        onError: () => toast({ title: "שגיאה בעדכון המחיר", variant: "destructive" }),
+        onSettled: () => setSavingPriceId(null),
+      }
+    );
+  };
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -458,11 +512,18 @@ export default function Products() {
                             : product.priceBeforeVat != null
                               ? Number(product.priceBeforeVat) * (1 + VAT_RATE)
                               : null;
+                          const isEditingPrice = editingPriceId === product.id;
                           return (
                             <TableRow
                               key={product.id}
                               data-testid={`row-product-${product.id}`}
-                              className={selectedIds.has(product.id) ? "bg-primary/5" : ""}
+                              className={
+                                isEditingPrice
+                                  ? "bg-amber-50 dark:bg-amber-950/20"
+                                  : selectedIds.has(product.id)
+                                    ? "bg-primary/5"
+                                    : ""
+                              }
                             >
                               <TableCell className="pr-4">
                                 <Checkbox
@@ -479,11 +540,58 @@ export default function Products() {
                                   <div className="text-xs text-muted-foreground">{product.notes}</div>
                                 )}
                               </TableCell>
-                              <TableCell className="text-muted-foreground text-sm">
-                                {beforeVat != null ? formatCurrency(beforeVat) : "—"}
+                              <TableCell className="text-sm p-1">
+                                {isEditingPrice ? (
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={priceEditBeforeVat}
+                                    onChange={(e) => {
+                                      setPriceEditBeforeVat(e.target.value);
+                                      const v = parseFloat(e.target.value);
+                                      if (!isNaN(v)) setPriceEditAfterVat((v * (1 + VAT_RATE)).toFixed(2));
+                                    }}
+                                    className="h-7 text-xs w-24"
+                                    placeholder='לפני מע"מ'
+                                    autoFocus
+                                    data-testid={`input-price-before-vat-inline-${product.id}`}
+                                  />
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="text-muted-foreground hover:text-foreground hover:underline cursor-pointer text-left w-full"
+                                    onClick={() => startPriceEdit(product)}
+                                    title="לחץ לעריכת מחיר"
+                                  >
+                                    {beforeVat != null ? formatCurrency(beforeVat) : <span className="text-muted-foreground/50 text-xs">הוסף מחיר</span>}
+                                  </button>
+                                )}
                               </TableCell>
-                              <TableCell className="font-semibold text-primary text-sm">
-                                {afterVat != null ? formatCurrency(afterVat) : "—"}
+                              <TableCell className="font-semibold text-sm p-1">
+                                {isEditingPrice ? (
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={priceEditAfterVat}
+                                    onChange={(e) => {
+                                      setPriceEditAfterVat(e.target.value);
+                                      const v = parseFloat(e.target.value);
+                                      if (!isNaN(v)) setPriceEditBeforeVat((v / (1 + VAT_RATE)).toFixed(2));
+                                    }}
+                                    className="h-7 text-xs w-24 text-primary border-primary/50"
+                                    placeholder='אחרי מע"מ'
+                                    data-testid={`input-price-after-vat-inline-${product.id}`}
+                                  />
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="text-primary hover:underline cursor-pointer text-left w-full"
+                                    onClick={() => startPriceEdit(product)}
+                                    title="לחץ לעריכת מחיר"
+                                  >
+                                    {afterVat != null ? formatCurrency(afterVat) : <span className="text-muted-foreground/50 text-xs font-normal">הוסף מחיר</span>}
+                                  </button>
+                                )}
                               </TableCell>
                               <TableCell className="text-sm text-center">
                                 {product.sizeSmall || "—"}
@@ -501,26 +609,65 @@ export default function Products() {
                                 {product.productNotes || "—"}
                               </TableCell>
                               <TableCell className="text-left">
-                                <div className="flex justify-end gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8"
-                                    onClick={() => handleOpenEdit(product)}
-                                    data-testid={`button-edit-product-${product.id}`}
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => setDeletingId(product.id)}
-                                    data-testid={`button-delete-product-${product.id}`}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                </div>
+                                {isEditingPrice ? (
+                                  <div className="flex justify-end gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                      onClick={() => savePriceEdit(product)}
+                                      disabled={savingPriceId === product.id}
+                                      title="שמור מחיר"
+                                      data-testid={`button-save-price-${product.id}`}
+                                    >
+                                      {savingPriceId === product.id
+                                        ? <div className="w-3.5 h-3.5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                                        : <Check className="w-3.5 h-3.5" />
+                                      }
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                      onClick={cancelPriceEdit}
+                                      title="ביטול"
+                                      data-testid={`button-cancel-price-${product.id}`}
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex justify-end gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                      onClick={() => startPriceEdit(product)}
+                                      title="עדכן מחיר"
+                                      data-testid={`button-edit-price-${product.id}`}
+                                    >
+                                      <DollarSign className="w-3.5 h-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8"
+                                      onClick={() => handleOpenEdit(product)}
+                                      data-testid={`button-edit-product-${product.id}`}
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      onClick={() => setDeletingId(product.id)}
+                                      data-testid={`button-delete-product-${product.id}`}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                )}
                               </TableCell>
                             </TableRow>
                           );

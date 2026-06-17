@@ -475,7 +475,7 @@ export default function QuoteDetail() {
         <div className="flex justify-between items-start border-b-2 pb-6 mb-8" style={{ borderColor: "#8B7040" }}>
           <div className="flex flex-col gap-1">
             <img src="/logo.png" alt="דרך השמש" className="h-20 w-auto object-contain" />
-            <p className="text-sm text-gray-500 mt-1">סיטונאות מזון וחקלאות</p>
+            <p className="text-sm mt-1 font-medium tracking-wide text-[#8B7040]">סיטונאות מזון ובריאות מהטבע</p>
           </div>
           <div className="text-left bg-gray-50 p-4 rounded-md min-w-[180px]">
             <h2 className="text-2xl font-bold mb-2" style={{ color: "#8B7040" }}>הצעת מחיר</h2>
