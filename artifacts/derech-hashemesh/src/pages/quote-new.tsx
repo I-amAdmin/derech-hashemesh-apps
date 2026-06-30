@@ -31,6 +31,7 @@ const quoteItemSchema = z.object({
   productId: z.number(),
   quantity: z.coerce.number().min(1, "כמות חייבת להיות לפחות 1"),
   customPricePerKg: z.coerce.number().min(0, "מחיר לא יכול להיות שלילי"),
+  customWeightKg: z.coerce.number().min(0).optional(),
   selectedSize: z.enum(["small", "medium", "large"]).optional(),
 });
 
@@ -63,6 +64,8 @@ export default function QuoteNew() {
   const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
   const [pendingSelection, setPendingSelection] = useState<Set<number>>(new Set());
   const [pendingSizes, setPendingSizes] = useState<Map<number, { small?: number; medium?: number; large?: number }>>(new Map());
+  const [pendingWeights, setPendingWeights] = useState<Map<number, number>>(new Map());
+  const [pendingPrices, setPendingPrices] = useState<Map<number, number>>(new Map());
   const [selectorPage, setSelectorPage] = useState(0);
   const PAGE_SIZE = 50;
 
@@ -149,19 +152,25 @@ export default function QuoteNew() {
       const counts = pendingSizes.get(p.id) ?? {};
       const sizes: ("small" | "medium" | "large")[] = ["small", "medium", "large"];
       let addedAny = false;
+      const customWeight = pendingWeights.get(p.id);
+      const customPrice = pendingPrices.get(p.id);
       sizes.forEach((size) => {
         const qty = counts[size];
         if (qty && qty > 0) {
-          append({ productId: p.id, quantity: qty, customPricePerKg: p.pricePerKg, selectedSize: size });
+          const price = customPrice ?? getTierPrice(p, qty);
+          append({ productId: p.id, quantity: qty, customPricePerKg: price, selectedSize: size, customWeightKg: customWeight });
           addedAny = true;
         }
       });
       if (!addedAny && !items.some((item) => item.productId === p.id)) {
-        append({ productId: p.id, quantity: 1, customPricePerKg: p.pricePerKg });
+        const price = customPrice ?? getTierPrice(p, 1);
+        append({ productId: p.id, quantity: 1, customPricePerKg: price, customWeightKg: customWeight });
       }
     });
     setPendingSelection(new Set());
     setPendingSizes(new Map());
+    setPendingWeights(new Map());
+    setPendingPrices(new Map());
     setIsProductSelectorOpen(false);
     setProductSearch("");
     setSelectedDept(null);
@@ -170,6 +179,8 @@ export default function QuoteNew() {
   const closeSelectorDialog = () => {
     setPendingSelection(new Set());
     setPendingSizes(new Map());
+    setPendingWeights(new Map());
+    setPendingPrices(new Map());
     setProductSearch("");
     setSelectedDept(null);
     setIsProductSelectorOpen(false);
@@ -177,12 +188,39 @@ export default function QuoteNew() {
 
   const getProductDetails = (productId: number) => products?.find((p) => p.id === productId);
 
+  const getTierPrice = (product: ReturnType<typeof getProductDetails>, qty: number): number => {
+    const tiers = product?.priceTiers;
+    if (!tiers || tiers.length === 0) return product?.pricePerKg ?? 0;
+    const sorted = [...tiers].sort((a, b) => b.minQty - a.minQty);
+    const match = sorted.find((t) => qty >= t.minQty);
+    return match ? match.pricePerKg : (sorted[sorted.length - 1]?.pricePerKg ?? product?.pricePerKg ?? 0);
+  };
+
+  const applyTierPriceIfNeeded = (index: number, qty: number) => {
+    const item = items[index];
+    const product = getProductDetails(item?.productId);
+    if (!product?.priceTiers || product.priceTiers.length === 0) return;
+    const tierPrice = getTierPrice(product, qty);
+    form.setValue(`items.${index}.customPricePerKg`, tierPrice);
+  };
+
+  const getSizeWeightKg = (product: ReturnType<typeof getProductDetails>, selectedSize?: string | null): number => {
+    if (!product) return 0;
+    const sizeStr = selectedSize === "small" ? product.sizeSmall
+      : selectedSize === "medium" ? product.sizeMedium
+      : selectedSize === "large" ? product.sizeLarge
+      : null;
+    const grams = sizeStr ? parseFloat(sizeStr) || null : null;
+    return grams != null ? grams / 1000 : product.weightKg;
+  };
+
   const calculateItemTotal = (index: number) => {
     const item = items[index];
     const product = getProductDetails(item?.productId);
     if (!product || !item) return 0;
     const price = item.customPricePerKg ?? product.pricePerKg;
-    return price * product.weightKg * (item.quantity || 0);
+    const weightKg = item.customWeightKg ?? getSizeWeightKg(product, item.selectedSize);
+    return price * weightKg * (item.quantity || 0);
   };
 
   const calculateTotal = () =>
@@ -371,23 +409,63 @@ export default function QuoteNew() {
                         const catalogPrice = product.pricePerKg;
                         const currentPrice = items[index]?.customPricePerKg ?? catalogPrice;
                         const isModified = Math.abs(currentPrice - catalogPrice) > 0.001;
-                        const pricePerUnit = (items[index]?.customPricePerKg ?? catalogPrice) * product.weightKg;
+                        const effectiveWeightKg = items[index]?.customWeightKg ?? getSizeWeightKg(product, items[index]?.selectedSize);
+                        const pricePerUnit = (items[index]?.customPricePerKg ?? catalogPrice) * effectiveWeightKg;
+                        const hasTiers = Array.isArray(product.priceTiers) && product.priceTiers.length > 0;
+                        const activeTier = hasTiers ? getTierPrice(product, items[index]?.quantity ?? 1) : null;
 
                         return (
                           <TableRow key={field.id} data-testid={`row-item-${index}`}>
                             <TableCell className="font-mono text-xs px-2">{product.barcode}</TableCell>
                             <TableCell className="text-xs font-medium px-2">
                               <div>{product.description}</div>
-                              {items[index]?.selectedSize && (
-                                <span className="inline-flex items-center mt-0.5 text-xs font-medium text-primary bg-primary/10 rounded px-1 py-0.5">
-                                  {items[index].selectedSize === "small" ? "קטן" : items[index].selectedSize === "medium" ? "בינוני" : "גדול"}
-                                </span>
+                            </TableCell>
+                            {([
+                              ["small", product.sizeSmall] as const,
+                              ["medium", product.sizeMedium] as const,
+                              ["large", product.sizeLarge] as const,
+                            ]).map(([size, label]) => {
+                              const isSelected = items[index]?.selectedSize === size;
+                              return (
+                                <TableCell key={size} className="text-xs text-center px-1">
+                                  {label ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        form.setValue(`items.${index}.selectedSize`, isSelected ? undefined : size);
+                                      }}
+                                      className={`px-1.5 py-0.5 rounded text-xs font-medium transition-colors ${
+                                        isSelected
+                                          ? "bg-primary text-primary-foreground"
+                                          : "bg-muted hover:bg-primary/20 text-foreground"
+                                      }`}
+                                    >
+                                      {label}
+                                    </button>
+                                  ) : "—"}
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="px-2">
+                              <FormField control={form.control} name={`items.${index}.customWeightKg`} render={({ field: wField }) => (
+                                <FormItem className="mb-0">
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      step="0.001"
+                                      min="0"
+                                      aria-label="משקל לאריזה (ק&quot;ג)"
+                                      className="h-8 text-center px-1 text-xs"
+                                      {...wField}
+                                      value={wField.value ?? ""}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )} />
+                              {product.weightOrAmount && (
+                                <div className="text-xs text-muted-foreground mt-0.5 text-center">{product.weightOrAmount}</div>
                               )}
                             </TableCell>
-                            <TableCell className="text-xs text-center px-1">{product.sizeSmall || "—"}</TableCell>
-                            <TableCell className="text-xs text-center px-1">{product.sizeMedium || "—"}</TableCell>
-                            <TableCell className="text-xs text-center px-1">{product.sizeLarge || "—"}</TableCell>
-                            <TableCell className="text-xs px-2">{product.weightOrAmount || "—"}</TableCell>
                             <TableCell className="px-2">
                               <FormField
                                 control={form.control}
@@ -412,7 +490,10 @@ export default function QuoteNew() {
                                   </FormItem>
                                 )}
                               />
-                              {isModified && (
+                              {hasTiers && activeTier !== null && (
+                                <div className="text-xs text-blue-600 mt-0.5">מדרגה: {formatCurrency(activeTier)}</div>
+                              )}
+                              {!hasTiers && isModified && (
                                 <div className="text-xs text-orange-500 mt-0.5">קטלוג: {formatCurrency(catalogPrice)}</div>
                               )}
                             </TableCell>
@@ -424,7 +505,18 @@ export default function QuoteNew() {
                                 render={({ field: qField }) => (
                                   <FormItem className="mb-0">
                                     <FormControl>
-                                      <Input type="number" min="1" className="h-8 text-center px-1 text-xs" {...qField} data-testid={`input-quantity-${index}`} />
+                                      <Input
+                                        type="number"
+                                        min="1"
+                                        className="h-8 text-center px-1 text-xs"
+                                        {...qField}
+                                        onChange={(e) => {
+                                          qField.onChange(e);
+                                          const qty = Number(e.target.value);
+                                          if (qty > 0) applyTierPriceIfNeeded(index, qty);
+                                        }}
+                                        data-testid={`input-quantity-${index}`}
+                                      />
                                     </FormControl>
                                   </FormItem>
                                 )}
@@ -580,6 +672,7 @@ export default function QuoteNew() {
                               disabled={alreadyAdded}
                               onChange={() => !alreadyAdded && togglePending(p.id)}
                               onClick={(e) => e.stopPropagation()}
+                              aria-label={`בחר ${p.description}`}
                               data-testid={`checkbox-product-${p.id}`}
                             />
                           </TableCell>
@@ -625,9 +718,54 @@ export default function QuoteNew() {
                               </TableCell>
                             );
                           })}
-                          <TableCell className="text-sm">{p.weightOrAmount || "—"}</TableCell>
-                          <TableCell className="text-primary font-semibold">{formatCurrency(p.pricePerKg)}</TableCell>
-                          <TableCell>{formatCurrency(p.pricePerKg * p.weightKg)}</TableCell>
+                          <TableCell className="text-sm" onClick={(e) => isChecked && e.stopPropagation()}>
+                            {isChecked && !alreadyAdded ? (
+                              <Input
+                                type="number"
+                                step="0.001"
+                                min="0"
+                                aria-label="משקל לאריזה (ק&quot;ג)"
+                                placeholder={String(p.weightKg)}
+                                value={pendingWeights.get(p.id) ?? ""}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value);
+                                  setPendingWeights((prev) => { const m = new Map(prev); if (v > 0) m.set(p.id, v); else m.delete(p.id); return m; });
+                                }}
+                                className="h-7 text-xs w-24"
+                              />
+                            ) : (
+                              p.weightOrAmount || String(p.weightKg)
+                            )}
+                          </TableCell>
+                          <TableCell className="text-primary font-semibold" onClick={(e) => isChecked && e.stopPropagation()}>
+                            {isChecked && !alreadyAdded ? (
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                aria-label='מחיר לק"ג'
+                                placeholder={String(getTierPrice(p, 1))}
+                                value={pendingPrices.get(p.id) ?? ""}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value);
+                                  setPendingPrices((prev) => { const m = new Map(prev); if (v >= 0) m.set(p.id, v); else m.delete(p.id); return m; });
+                                }}
+                                className="h-7 text-xs w-24"
+                              />
+                            ) : (
+                              <>
+                                <div>{formatCurrency(p.pricePerKg)}</div>
+                                {Array.isArray(p.priceTiers) && p.priceTiers.length > 0 && (
+                                  <div className="text-xs text-blue-600 mt-0.5 font-normal">מדרגות כמות</div>
+                                )}
+                              </>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(
+                              (pendingPrices.get(p.id) ?? p.pricePerKg) * (pendingWeights.get(p.id) ?? p.weightKg)
+                            )}
+                          </TableCell>
                         </TableRow>
                       );
                     })}
