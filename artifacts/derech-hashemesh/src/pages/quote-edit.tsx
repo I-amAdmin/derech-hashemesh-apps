@@ -3,11 +3,13 @@ import { Layout } from "@/components/layout";
 import {
   useListProducts,
   useUpdateQuote,
+  useUpdateProduct,
   useGetQuote,
   useListCustomers,
   getListQuotesQueryKey,
   getGetQuotesSummaryQueryKey,
   getGetQuoteQueryKey,
+  getListProductsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
@@ -26,11 +28,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useResizableColumns } from "@/hooks/use-resizable-columns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const quoteItemSchema = z.object({
   productId: z.number(),
   quantity: z.coerce.number().min(1, "כמות חייבת להיות לפחות 1"),
   customPricePerKg: z.coerce.number().min(0, "מחיר לא יכול להיות שלילי"),
+  customWeightKg: z.coerce.number().min(0).optional(),
   selectedSize: z.enum(["small", "medium", "large"]).optional(),
 });
 
@@ -62,12 +66,36 @@ export default function QuoteEdit() {
     query: { enabled: !!quoteId, queryKey: getGetQuoteQueryKey(quoteId) },
   });
   const updateQuote = useUpdateQuote();
+  const updateProduct = useUpdateProduct();
+
+  type ProductDraft = { sizeSmall?: string; sizeMedium?: string; sizeLarge?: string; pricePerKg?: number };
+  const [productDrafts, setProductDrafts] = useState<Map<number, ProductDraft>>(new Map());
+  const [propagateToCatalog, setPropagateToCatalog] = useState<Set<number>>(new Set());
+
+  const updateProductDraft = (productId: number, patch: ProductDraft) => {
+    setProductDrafts((prev) => {
+      const next = new Map(prev);
+      const current = next.get(productId) ?? {};
+      next.set(productId, { ...current, ...patch });
+      return next;
+    });
+  };
+
+  const togglePropagate = (productId: number, checked: boolean) => {
+    setPropagateToCatalog((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(productId); else next.delete(productId);
+      return next;
+    });
+  };
 
   const [productSearch, setProductSearch] = useState("");
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
   const [pendingSelection, setPendingSelection] = useState<Set<number>>(new Set());
   const [pendingSizes, setPendingSizes] = useState<Map<number, "small" | "medium" | "large">>(new Map());
+  const [pendingWeights, setPendingWeights] = useState<Map<number, number>>(new Map());
+  const [pendingPrices, setPendingPrices] = useState<Map<number, number>>(new Map());
   const [selectorPage, setSelectorPage] = useState(0);
   const PAGE_SIZE = 50;
   const [formReady, setFormReady] = useState(false);
@@ -105,6 +133,7 @@ export default function QuoteEdit() {
         productId: item.productId ?? 0,
         quantity: item.quantity,
         customPricePerKg: item.pricePerKg,
+        customWeightKg: item.weightKg,
         selectedSize: (item.selectedSize as "small" | "medium" | "large" | undefined) ?? undefined,
       })).filter((item) => item.productId > 0),
     });
@@ -155,9 +184,15 @@ export default function QuoteEdit() {
     const toAdd = (products ?? []).filter(
       (p) => pendingSelection.has(p.id) && !items.some((item) => item.productId === p.id)
     );
-    toAdd.forEach((p) => append({ productId: p.id, quantity: 1, customPricePerKg: p.pricePerKg, selectedSize: pendingSizes.get(p.id) }));
+    toAdd.forEach((p) => {
+      const price = pendingPrices.get(p.id) ?? getTierPrice(p, 1);
+      const weight = pendingWeights.get(p.id) ?? p.weightKg;
+      append({ productId: p.id, quantity: 1, customPricePerKg: price, customWeightKg: weight, selectedSize: pendingSizes.get(p.id) });
+    });
     setPendingSelection(new Set());
     setPendingSizes(new Map());
+    setPendingWeights(new Map());
+    setPendingPrices(new Map());
     setIsProductSelectorOpen(false);
     setProductSearch("");
     setSelectedDept(null);
@@ -166,6 +201,8 @@ export default function QuoteEdit() {
   const closeSelectorDialog = () => {
     setPendingSelection(new Set());
     setPendingSizes(new Map());
+    setPendingWeights(new Map());
+    setPendingPrices(new Map());
     setProductSearch("");
     setSelectedDept(null);
     setIsProductSelectorOpen(false);
@@ -173,17 +210,77 @@ export default function QuoteEdit() {
 
   const getProductDetails = (productId: number) => products?.find((p) => p.id === productId);
 
+  const getTierPrice = (product: ReturnType<typeof getProductDetails>, qty: number): number => {
+    const tiers = product?.priceTiers;
+    if (!tiers || tiers.length === 0) return product?.pricePerKg ?? 0;
+    const sorted = [...tiers].sort((a, b) => b.minQty - a.minQty);
+    const match = sorted.find((t) => qty >= t.minQty);
+    return match ? match.pricePerKg : (sorted[sorted.length - 1]?.pricePerKg ?? product?.pricePerKg ?? 0);
+  };
+
+  const applyTierPriceIfNeeded = (index: number, qty: number) => {
+    const item = items[index];
+    const product = getProductDetails(item?.productId);
+    if (!product?.priceTiers || product.priceTiers.length === 0) return;
+    const tierPrice = getTierPrice(product, qty);
+    form.setValue(`items.${index}.customPricePerKg`, tierPrice);
+  };
+
   const calculateItemTotal = (index: number) => {
     const item = items[index];
     const product = getProductDetails(item?.productId);
     if (!product || !item) return 0;
     const price = item.customPricePerKg ?? product.pricePerKg;
-    return price * product.weightKg * (item.quantity || 0);
+    const weight = item.customWeightKg ?? product.weightKg;
+    return price * weight * (item.quantity || 0);
   };
 
   const calculateTotal = () => items.reduce((total, _, idx) => total + calculateItemTotal(idx), 0);
 
-  const onSubmit = (data: QuoteFormValues) => {
+  const collectProductUpdates = (data: QuoteFormValues) => {
+    const updates: Array<{ id: number; data: ProductDraft }> = [];
+    const seen = new Set<number>();
+
+    productDrafts.forEach((draft, productId) => {
+      const product = getProductDetails(productId);
+      if (!product) return;
+      const patch: ProductDraft = {};
+      (["sizeSmall", "sizeMedium", "sizeLarge"] as const).forEach((k) => {
+        if (draft[k] !== undefined && draft[k] !== (product[k] ?? "")) patch[k] = draft[k];
+      });
+      if (Object.keys(patch).length > 0) {
+        updates.push({ id: productId, data: patch });
+        seen.add(productId);
+      }
+    });
+
+    data.items.forEach((item) => {
+      if (!propagateToCatalog.has(item.productId)) return;
+      const product = getProductDetails(item.productId);
+      if (!product) return;
+      if (Math.abs(item.customPricePerKg - product.pricePerKg) < 0.001) return;
+      const existing = updates.find((u) => u.id === item.productId);
+      if (existing) existing.data.pricePerKg = item.customPricePerKg;
+      else updates.push({ id: item.productId, data: { pricePerKg: item.customPricePerKg } });
+      seen.add(item.productId);
+    });
+
+    return updates;
+  };
+
+  const onSubmit = async (data: QuoteFormValues) => {
+    const productUpdates = collectProductUpdates(data);
+    if (productUpdates.length > 0) {
+      try {
+        await Promise.all(
+          productUpdates.map((u) => updateProduct.mutateAsync({ id: u.id, data: u.data as any }))
+        );
+        queryClient.invalidateQueries({ queryKey: getListProductsQueryKey() });
+      } catch {
+        toast({ title: "שגיאה בעדכון חלק מהמוצרים בקטלוג — הצעת המחיר לא נשמרה", variant: "destructive" });
+        return;
+      }
+    }
     updateQuote.mutate(
       {
         id: quoteId,
@@ -199,11 +296,14 @@ export default function QuoteEdit() {
           items: data.items.map((item) => {
             const product = getProductDetails(item.productId);
             const catalogPrice = product?.pricePerKg ?? 0;
-            const isCustom = Math.abs(item.customPricePerKg - catalogPrice) > 0.001;
+            const catalogWeight = product?.weightKg ?? 0;
+            const isCustomPrice = Math.abs(item.customPricePerKg - catalogPrice) > 0.001;
+            const isCustomWeight = item.customWeightKg !== undefined && Math.abs(item.customWeightKg - catalogWeight) > 0.0001;
             return {
               productId: item.productId,
               quantity: item.quantity,
-              customPricePerKg: isCustom ? item.customPricePerKg : undefined,
+              customPricePerKg: isCustomPrice ? item.customPricePerKg : undefined,
+              weightKg: isCustomWeight ? item.customWeightKg : undefined,
               selectedSize: item.selectedSize,
             };
           }),
@@ -214,6 +314,8 @@ export default function QuoteEdit() {
           queryClient.invalidateQueries({ queryKey: getListQuotesQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetQuotesSummaryQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetQuoteQueryKey(quoteId) });
+          setProductDrafts(new Map());
+          setPropagateToCatalog(new Set());
           toast({ title: "הצעת המחיר עודכנה בהצלחה!" });
           setLocation(`/quotes/${quoteId}`);
         },
@@ -349,7 +451,9 @@ export default function QuoteEdit() {
                         const catalogPrice = product.pricePerKg;
                         const currentPrice = items[index]?.customPricePerKg ?? catalogPrice;
                         const isModified = Math.abs(currentPrice - catalogPrice) > 0.001;
-                        const pricePerUnit = (items[index]?.customPricePerKg ?? catalogPrice) * product.weightKg;
+                        const pricePerUnit = (items[index]?.customPricePerKg ?? catalogPrice) * (items[index]?.customWeightKg ?? product.weightKg);
+                        const hasTiers = Array.isArray(product.priceTiers) && product.priceTiers.length > 0;
+                        const activeTier = hasTiers ? getTierPrice(product, items[index]?.quantity ?? 1) : null;
 
                         return (
                           <TableRow key={field.id} data-testid={`row-item-${index}`}>
@@ -362,10 +466,42 @@ export default function QuoteEdit() {
                                 </span>
                               )}
                             </TableCell>
-                            <TableCell className="text-xs text-center px-1">{product.sizeSmall || "—"}</TableCell>
-                            <TableCell className="text-xs text-center px-1">{product.sizeMedium || "—"}</TableCell>
-                            <TableCell className="text-xs text-center px-1">{product.sizeLarge || "—"}</TableCell>
-                            <TableCell className="text-xs px-2">{product.weightOrAmount || "—"}</TableCell>
+                            {(["sizeSmall", "sizeMedium", "sizeLarge"] as const).map((sizeKey) => {
+                              const draft = productDrafts.get(product.id);
+                              const value = draft?.[sizeKey] ?? product[sizeKey] ?? "";
+                              const isDirty = draft?.[sizeKey] !== undefined && draft[sizeKey] !== product[sizeKey];
+                              return (
+                                <TableCell key={sizeKey} className="text-xs text-center px-1">
+                                  <Input
+                                    aria-label={sizeKey === "sizeSmall" ? "כמות לאריזה — קטן" : sizeKey === "sizeMedium" ? "כמות לאריזה — בינוני" : "כמות לאריזה — גדול"}
+                                    placeholder="—"
+                                    value={value}
+                                    onChange={(e) => updateProductDraft(product.id, { [sizeKey]: e.target.value })}
+                                    className={`h-8 text-center px-1 text-xs ${isDirty ? "border-yellow-400 bg-yellow-50 font-semibold" : ""}`}
+                                  />
+                                </TableCell>
+                              );
+                            })}
+                            <TableCell className="px-2">
+                              <FormField control={form.control} name={`items.${index}.customWeightKg`} render={({ field: wField }) => (
+                                <FormItem className="mb-0">
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      step="0.001"
+                                      min="0"
+                                      aria-label="משקל לאריזה (ק&quot;ג)"
+                                      className="h-8 text-center px-1 text-xs"
+                                      {...wField}
+                                      value={wField.value ?? ""}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )} />
+                              {product.weightOrAmount && (
+                                <div className="text-xs text-muted-foreground mt-0.5 text-center">{product.weightOrAmount}</div>
+                              )}
+                            </TableCell>
                             <TableCell className="px-2">
                               <FormField control={form.control} name={`items.${index}.customPricePerKg`} render={({ field: pField }) => (
                                 <FormItem className="mb-0">
@@ -377,12 +513,24 @@ export default function QuoteEdit() {
                                   </FormControl>
                                 </FormItem>
                               )} />
-                              {isModified && <div className="text-xs text-orange-500 mt-0.5">קטלוג: {formatCurrency(catalogPrice)}</div>}
+                              {hasTiers && activeTier !== null && (
+                                <div className="text-xs text-blue-600 mt-0.5">מדרגה: {formatCurrency(activeTier)}</div>
+                              )}
+                              {!hasTiers && isModified && <div className="text-xs text-orange-500 mt-0.5">קטלוג: {formatCurrency(catalogPrice)}</div>}
+                              {isModified && (
+                                <label className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground cursor-pointer" title="עדכן את מחיר הקטלוג של המוצר בעת השמירה">
+                                  <Checkbox
+                                    checked={propagateToCatalog.has(product.id)}
+                                    onCheckedChange={(checked) => togglePropagate(product.id, !!checked)}
+                                  />
+                                  שמור גם בקטלוג
+                                </label>
+                              )}
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground px-2">{formatCurrency(pricePerUnit)}</TableCell>
                             <TableCell className="px-2">
                               <FormField control={form.control} name={`items.${index}.quantity`} render={({ field: qField }) => (
-                                <FormItem className="mb-0"><FormControl><Input type="number" min="1" className="h-8 text-center px-1 text-xs" {...qField} /></FormControl></FormItem>
+                                <FormItem className="mb-0"><FormControl><Input type="number" min="1" className="h-8 text-center px-1 text-xs" {...qField} onChange={(e) => { qField.onChange(e); const qty = Number(e.target.value); if (qty > 0) applyTierPriceIfNeeded(index, qty); }} /></FormControl></FormItem>
                               )} />
                             </TableCell>
                             <TableCell className="font-bold text-primary text-xs px-2">{formatCurrency(itemTotal)}</TableCell>
@@ -422,8 +570,12 @@ export default function QuoteEdit() {
 
           <div className="flex justify-end gap-4">
             <Button variant="outline" type="button" onClick={() => setLocation(`/quotes/${quoteId}`)}>ביטול</Button>
-            <Button type="submit" size="lg" className="px-8 shadow-md" disabled={updateQuote.isPending} data-testid="button-save-quote">
-              {updateQuote.isPending ? "שומר..." : "שמור שינויים"}
+            <Button type="submit" size="lg" className="px-8 shadow-md" disabled={updateQuote.isPending || updateProduct.isPending} data-testid="button-save-quote">
+              {(updateQuote.isPending || updateProduct.isPending)
+                ? "שומר..."
+                : productDrafts.size > 0 || propagateToCatalog.size > 0
+                  ? `שמור שינויים (כולל עדכוני מוצר)`
+                  : "שמור שינויים"}
               <Check className="w-4 h-4 mr-2" />
             </Button>
           </div>
@@ -551,9 +703,49 @@ export default function QuoteEdit() {
                               </TableCell>
                             );
                           })}
-                          <TableCell className="text-sm">{p.weightOrAmount || "—"}</TableCell>
-                          <TableCell className="text-primary font-semibold">{formatCurrency(p.pricePerKg)}</TableCell>
-                          <TableCell>{formatCurrency(p.pricePerKg * p.weightKg)}</TableCell>
+                          <TableCell className="text-sm" onClick={(e) => isChecked && e.stopPropagation()}>
+                            {isChecked && !alreadyAdded ? (
+                              <Input
+                                type="number"
+                                step="0.001"
+                                min="0"
+                                aria-label="משקל לאריזה (ק&quot;ג)"
+                                placeholder={String(p.weightKg)}
+                                value={pendingWeights.get(p.id) ?? ""}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value);
+                                  setPendingWeights((prev) => { const m = new Map(prev); if (v > 0) m.set(p.id, v); else m.delete(p.id); return m; });
+                                }}
+                                className="h-7 text-xs w-24"
+                              />
+                            ) : (
+                              p.weightOrAmount || String(p.weightKg)
+                            )}
+                          </TableCell>
+                          <TableCell className="text-primary font-semibold" onClick={(e) => isChecked && e.stopPropagation()}>
+                            {isChecked && !alreadyAdded ? (
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                aria-label='מחיר לק"ג'
+                                placeholder={String(getTierPrice(p, 1))}
+                                value={pendingPrices.get(p.id) ?? ""}
+                                onChange={(e) => {
+                                  const v = parseFloat(e.target.value);
+                                  setPendingPrices((prev) => { const m = new Map(prev); if (v >= 0) m.set(p.id, v); else m.delete(p.id); return m; });
+                                }}
+                                className="h-7 text-xs w-24"
+                              />
+                            ) : (
+                              formatCurrency(p.pricePerKg)
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {formatCurrency(
+                              (pendingPrices.get(p.id) ?? p.pricePerKg) * (pendingWeights.get(p.id) ?? p.weightKg)
+                            )}
+                          </TableCell>
                         </TableRow>
                       );
                     })}
