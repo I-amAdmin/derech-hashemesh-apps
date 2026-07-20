@@ -30,7 +30,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Eye, Trash2, FileText, ChevronDown, Pencil } from "lucide-react";
+import { Plus, Search, Eye, Trash2, FileText, ChevronDown, Pencil, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -205,6 +205,11 @@ export default function Quotes() {
                       <Link href={`/quotes/${quote.id}/edit`}>
                         <Button variant="ghost" size="icon" title="ערוך" className="h-8 w-8">
                           <Pencil className="w-4 h-4" />
+                        </Button>
+                      </Link>
+                      <Link href={`/quotes/new?duplicate=${quote.id}`}>
+                        <Button variant="ghost" size="icon" title="שכפל (פריטים בלבד)" className="h-8 w-8" data-testid={`button-duplicate-${quote.id}`}>
+                          <Copy className="w-4 h-4" />
                         </Button>
                       </Link>
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8" onClick={() => setDeletingId(quote.id)} title="מחק">

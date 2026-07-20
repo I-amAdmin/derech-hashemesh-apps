@@ -4,6 +4,7 @@ import {
   useListProducts,
   useCreateQuote,
   useListCustomers,
+  useGetQuote,
   getListQuotesQueryKey,
   getGetQuoteQueryKey,
   getGetQuotesSummaryQueryKey,
@@ -59,6 +60,17 @@ export default function QuoteNew() {
   const { data: customers } = useListCustomers();
   const createQuote = useCreateQuote();
 
+  const duplicateSourceId = useMemo(() => {
+    if (typeof window === "undefined") return 0;
+    const raw = new URLSearchParams(window.location.search).get("duplicate");
+    const parsed = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }, []);
+  const { data: sourceQuote } = useGetQuote(duplicateSourceId, {
+    query: { enabled: duplicateSourceId > 0 },
+  });
+  const [duplicatePopulated, setDuplicatePopulated] = useState(false);
+
   const [productSearch, setProductSearch] = useState("");
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const [isProductSelectorOpen, setIsProductSelectorOpen] = useState(false);
@@ -105,6 +117,23 @@ export default function QuoteNew() {
       // ignore malformed data
     }
   }, [products]);
+
+  useEffect(() => {
+    if (duplicatePopulated) return;
+    if (!sourceQuote || !products || products.length === 0) return;
+    sourceQuote.items.forEach((item) => {
+      if (!item.productId) return;
+      if (!products.find((p) => p.id === item.productId)) return;
+      append({
+        productId: item.productId,
+        quantity: item.quantity,
+        customPricePerKg: item.pricePerKg,
+        customWeightKg: item.weightKg,
+        selectedSize: (item.selectedSize as "small" | "medium" | "large" | undefined) ?? undefined,
+      });
+    });
+    setDuplicatePopulated(true);
+  }, [sourceQuote, products, duplicatePopulated, append]);
 
   const fillFromCustomer = (customerId: number) => {
     const c = customers?.find((c) => c.id === customerId);

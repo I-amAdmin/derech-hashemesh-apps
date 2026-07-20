@@ -322,6 +322,12 @@ export default function QuoteDetail() {
               ערוך
             </Link>
           </Button>
+          <Button variant="outline" size="sm" asChild data-testid="button-duplicate-quote">
+            <Link href={`/quotes/new?duplicate=${quoteId}`}>
+              <Copy className="w-4 h-4 ml-2" />
+              שכפל
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" onClick={handleExcelExport} className="gap-2" data-testid="button-export-excel">
             <FileSpreadsheet className="w-4 h-4" />
             אקסל
